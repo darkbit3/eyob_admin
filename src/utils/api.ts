@@ -1,7 +1,10 @@
 // ─── BidLow API Client ────────────────────────────────────────────────────────
 // All requests go through the Vite proxy → http://localhost:3000
 
-const BASE = (import.meta as any).env?.VITE_API_BASE ?? '/api';
+const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : '';
+const BASE =
+  (import.meta as any).env?.VITE_API_BASE ??
+  (runtimeHost && /localhost|127\.0\.0\.1/.test(runtimeHost) ? '/api' : 'https://eyob-backend.onrender.com/api');
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
 export function getToken(): string | null {
@@ -29,12 +32,21 @@ async function request<T>(
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${BASE}${path}`, { ...options, headers });
-  const json = await res.json();
+  const contentType = res.headers.get('content-type') || '';
+  let body: any;
+  if (contentType.includes('application/json')) {
+    body = await res.json();
+  } else {
+    body = await res.text();
+    if (typeof body === 'string' && body.trim().startsWith('<')) {
+      throw new Error(`Non-JSON response (status ${res.status}): ${body.slice(0,200)}`);
+    }
+  }
 
   if (!res.ok) {
-    throw new Error(json?.message || `Request failed (${res.status})`);
+    throw new Error(body?.message || `Request failed (${res.status})`);
   }
-  return json;
+  return body;
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
