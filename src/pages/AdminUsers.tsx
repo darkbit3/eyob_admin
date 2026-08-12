@@ -92,7 +92,6 @@ export default function AdminUsers() {
             <option value="all">All Roles</option>
             <option value="admin">Admin</option>
             <option value="customer">Customer</option>
-            <option value="moderator">Moderator</option>
           </select>
 
           <select
@@ -136,9 +135,9 @@ export default function AdminUsers() {
                   </td>
                   <td className="p-4">
                     <span className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border ${
-                      u.role === 'admin' ? 'bg-purple-500/10 text-purple-300 border-purple-500/30' :
-                      u.role === 'moderator' ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' :
-                      'bg-slate-800 text-slate-300 border-slate-700'
+                      u.role === 'admin'
+                        ? 'bg-purple-500/10 text-purple-300 border-purple-500/30'
+                        : 'bg-slate-800 text-slate-300 border-slate-700'
                     }`}>
                       {u.role.toUpperCase()}
                     </span>

@@ -1,5 +1,5 @@
 export type AuctionStatus = 'active' | 'upcoming' | 'closed' | 'paused' | 'draft';
-export type UserRole = 'admin' | 'customer' | 'moderator';
+export type UserRole = 'admin' | 'customer';
 
 export interface User {
   id: string;
@@ -429,7 +429,7 @@ export const mockUsers: User[] = [
     email: 'girma.desta@bidlow.et',
     phone: '+251 93 234 5678',
     photo: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
-    role: 'moderator',
+    role: 'customer',
     walletBalance: 1100,
     credits: 40,
     status: 'active',

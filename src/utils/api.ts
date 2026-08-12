@@ -192,6 +192,11 @@ export const winnersApi = {
 // ── Reports ───────────────────────────────────────────────────────────────────
 export const reportsApi = {
   dashboard: () => request<{ success: boolean; data: any }>('/reports/dashboard'),
+  revenue: () => request<{ success: boolean; data: any[] }>('/reports/revenue'),
+  users: () => request<{ success: boolean; data: any[] }>('/reports/users'),
+  categories: () => request<{ success: boolean; data: any[] }>('/reports/categories'),
+  payments: () => request<{ success: boolean; data: any[] }>('/reports/payments'),
+  winnerStats: () => request<{ success: boolean; data: any }>('/winners/report/stats'),
 };
 
 // ── Announcements (admin sends via notifications) ─────────────────────────────

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Settings, Shield, Save, CheckCircle2, Lock, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Settings, Shield, Save, CheckCircle2, Lock, ToggleLeft, ToggleRight, XCircle } from 'lucide-react';
+import { settingsApi } from '../utils/api';
 
 export default function AdminSettings() {
   const { settings, updateSystemSettings } = useApp();
@@ -14,25 +15,45 @@ export default function AdminSettings() {
   const [maintenanceMode, setMaintenanceMode] = useState(settings.maintenanceMode);
 
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  function handleSaveSettings(e: React.FormEvent) {
+  async function handleSaveSettings(e: React.FormEvent) {
     e.preventDefault();
-    updateSystemSettings({
-      platformName,
-      supportEmail,
-      currency,
-      minBidPrice: Number(minBidPrice),
-      maxBidPrice: Number(maxBidPrice),
-      defaultBidStep: Number(defaultBidStep),
-      maintenanceMode,
-    });
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2500);
+    setSaving(true);
+    setSaveError('');
+    setSaveSuccess(false);
+    try {
+      await settingsApi.update({
+        platform_name: platformName,
+        support_email: supportEmail,
+        currency,
+        min_bid_price: Number(minBidPrice),
+        max_bid_price: Number(maxBidPrice),
+        default_bid_step: Number(defaultBidStep),
+        maintenance_mode: maintenanceMode,
+      });
+      // Sync local context so the rest of the UI reflects the new values
+      updateSystemSettings({
+        platformName,
+        supportEmail,
+        currency,
+        minBidPrice: Number(minBidPrice),
+        maxBidPrice: Number(maxBidPrice),
+        defaultBidStep: Number(defaultBidStep),
+        maintenanceMode,
+      });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to save settings. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   const [permissions, setPermissions] = useState([
     { role: 'Super Admin', manageAuctions: true, manageUsers: true, approvePayments: true, overrideWinners: false, viewAuditLogs: true },
-    { role: 'Auction Moderator', manageAuctions: true, manageUsers: false, approvePayments: false, overrideWinners: false, viewAuditLogs: true },
     { role: 'Finance Admin', manageAuctions: false, manageUsers: false, approvePayments: true, overrideWinners: false, viewAuditLogs: true },
     { role: 'Support Agent', manageAuctions: false, manageUsers: true, approvePayments: false, overrideWinners: false, viewAuditLogs: false },
   ]);
@@ -53,6 +74,11 @@ export default function AdminSettings() {
       {saveSuccess && (
         <div className="fixed top-4 right-4 z-50 p-3 bg-emerald-600 text-white font-semibold text-xs rounded-xl shadow-2xl flex items-center gap-2 animate-bounce">
           <CheckCircle2 className="w-4 h-4" /> Platform Settings Saved & Synchronized!
+        </div>
+      )}
+      {saveError && (
+        <div className="fixed top-4 right-4 z-50 p-3 bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-2xl flex items-center gap-2">
+          <XCircle className="w-4 h-4" /> {saveError}
         </div>
       )}
 
@@ -154,9 +180,10 @@ export default function AdminSettings() {
             <div className="pt-2">
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-purple-900/40 transition-all"
+                disabled={saving}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-xs rounded-xl shadow-lg shadow-purple-900/40 transition-all"
               >
-                <Save className="w-4 h-4" /> Save System Settings
+                <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save System Settings'}
               </button>
             </div>
           </form>

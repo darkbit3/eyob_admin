@@ -176,6 +176,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .then(res => setNotifications(res.data))
       .catch(() => {});
 
+    // Load persistent system settings from backend when available
+    (async () => {
+      try {
+        const res = await (await import('../utils/api')).settingsApi.get();
+        if (res && res.data) {
+          setSettings(prev => ({ ...prev, ...{
+            platformName: res.data.platform_name ?? res.data.platformName ?? prev.platformName,
+            supportEmail: res.data.support_email ?? res.data.supportEmail ?? prev.supportEmail,
+            currency: res.data.currency ?? prev.currency,
+            minBidPrice: Number(res.data.min_bid_price ?? res.data.minBidPrice ?? prev.minBidPrice),
+            maxBidPrice: Number(res.data.max_bid_price ?? res.data.maxBidPrice ?? prev.maxBidPrice),
+            defaultBidStep: Number(res.data.default_bid_step ?? res.data.defaultBidStep ?? prev.defaultBidStep),
+            autoWinnerVerification: res.data.auto_winner_verification ?? res.data.autoWinnerVerification ?? prev.autoWinnerVerification,
+            maintenanceMode: res.data.maintenance_mode ?? res.data.maintenanceMode ?? prev.maintenanceMode,
+          } }));
+        }
+      } catch (e) {
+        // ignore — continue using defaults
+      }
+    })();
+
     auditApi.list()
       .then(res => setAuditLogs(res.data))
       .catch(() => {});
