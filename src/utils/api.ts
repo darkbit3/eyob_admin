@@ -1,7 +1,7 @@
 // ─── BidLow API Client ────────────────────────────────────────────────────────
 // All requests go through the Vite proxy → http://localhost:3000
 
-const BASE = '/api';
+const BASE = (import.meta as any).env?.VITE_API_BASE ?? '/api';
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
 export function getToken(): string | null {
