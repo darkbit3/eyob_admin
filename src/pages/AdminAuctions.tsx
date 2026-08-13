@@ -20,6 +20,7 @@ export default function AdminAuctions() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Electronics');
   const [retailValue, setRetailValue] = useState(50000);
+  const [bidPerCost, setBidPerCost] = useState(100);
   const [minBid, setMinBid] = useState(1);
   const [maxBid, setMaxBid] = useState(500);
   const [startTime, setStartTime] = useState('2026-08-10T08:00');
@@ -38,6 +39,7 @@ export default function AdminAuctions() {
     setDescription('');
     setCategory('Electronics');
     setRetailValue(50000);
+    setBidPerCost(100);
     setMinBid(1);
     setMaxBid(500);
     setStartTime('2026-08-10T08:00');
@@ -58,6 +60,7 @@ export default function AdminAuctions() {
     setDescription(a.description);
     setCategory(a.category);
     setRetailValue(a.retailValue);
+    setBidPerCost(a.bidPerCost || 100);
     setMinBid(a.minBid);
     setMaxBid(a.maxBid);
     setStartTime(a.startTime.substring(0, 16));
@@ -77,6 +80,7 @@ export default function AdminAuctions() {
       description,
       category,
       retail_value: retailValue,
+      bid_per_cost: bidPerCost,
       min_bid: minBid,
       max_bid: maxBid,
       start_time: startTime,
@@ -93,6 +97,7 @@ export default function AdminAuctions() {
           category,
           image: imageUrl,
           retailValue,
+          bidPerCost,
           minBid,
           maxBid,
           startTime,
@@ -387,6 +392,18 @@ export default function AdminAuctions() {
                       type="number"
                       value={retailValue}
                       onChange={e => setRetailValue(Number(e.target.value))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Bid Per Cost (ETB)</label>
+                    <input
+                      type="number"
+                      value={bidPerCost}
+                      onChange={e => setBidPerCost(Number(e.target.value))}
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
                     />
                   </div>
