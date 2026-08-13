@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   User, Auction, Bid, Transaction, Notification, Product, PaymentQueueItem, Announcement, AuditLog, SystemSettings,
-  mockUsers, mockAuctions, mockBidsA005, mockBidsA006, mockTransactions, mockNotifications,
-  mockProducts, mockPaymentQueue, mockAnnouncements, mockAuditLogs, initialSettings,
+  initialSettings,
 } from '../data/mockData';
 import {
   getToken, removeToken,
@@ -124,15 +123,15 @@ function apiToBid(b: any): Bid {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUserState] = useState<User | null>(null);
-  const [auctions, setAuctions] = useState<Auction[]>(mockAuctions);
-  const [products, setProducts] = useState<Product[]>(mockProducts);
-  const [users, setUsers] = useState<User[]>(mockUsers);
-  const [bids, setBids] = useState<Bid[]>([...mockBidsA005, ...mockBidsA006]);
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
-  const [paymentQueue, setPaymentQueue] = useState<PaymentQueueItem[]>(mockPaymentQueue);
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
-  const [announcements, setAnnouncements] = useState<Announcement[]>(mockAnnouncements);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(mockAuditLogs);
+  const [auctions, setAuctions] = useState<Auction[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [bids, setBids] = useState<Bid[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [paymentQueue, setPaymentQueue] = useState<PaymentQueueItem[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [settings, setSettings] = useState<SystemSettings>(initialSettings);
 
   // ── On mount: restore admin session & load live data ─────────────────────────
