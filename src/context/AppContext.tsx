@@ -96,6 +96,7 @@ function apiToAuction(a: any): Auction {
     description: a.description ?? '',
     image: a.image_url ?? a.image ?? a.imageUrl ?? '',
     retailValue: Number(a.retail_value ?? a.retailValue ?? 0),
+    bidPerCost: Number(a.bid_per_cost ?? a.bidPerCost ?? 100),
     category: a.category,
     status: a.status,
     startTime: a.start_time ?? a.startTime ?? '',
