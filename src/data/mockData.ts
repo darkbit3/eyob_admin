@@ -27,6 +27,8 @@ export interface Product {
   description: string;
   linkedAuctionId?: string;
   linkedAuctionStatus?: AuctionStatus;
+  linkedAuctionEndTime?: string;
+  linkedAuctionStartTime?: string;
   createdAt: string;
 }
 

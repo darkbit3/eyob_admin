@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Product } from '../data/mockData';
 import CountdownTimer from '../components/CountdownTimer';
-import { Package, Search, Plus, Edit2, Trash2 } from 'lucide-react';
+import { Package, Search, Plus, Edit2, Trash2, Link2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ADMIN_ROUTES } from '../utils/routes';
 
 export default function AdminProducts() {
   const { auctions, products, addProduct, updateProduct, deleteProduct } = useApp();
+  const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -157,87 +160,112 @@ export default function AdminProducts() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              {filtered.map((p) => (
-                <tr
-                  key={p.id}
-                  className="hover:bg-slate-800/40 transition-colors cursor-pointer"
-                  onClick={() => { setViewProduct(p); setViewIndex(0); }}
-                >
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={(p.images && p.images[0]) || 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=900&h=600&fit=crop'}
-                        alt={p.name}
-                        className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
-                      />
-                      <div>
-                        <p className="font-bold text-white text-xs">{p.name}</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{p.description}</p>
+              {filtered.map((p) => {
+                const isLinked = !!p.linkedAuctionId && !!p.linkedAuctionStatus;
+                const auctionEndTime = p.linkedAuctionEndTime ?? auctions.find(a => a.id === p.linkedAuctionId)?.endTime;
+                const auctionStartTime = p.linkedAuctionStartTime ?? auctions.find(a => a.id === p.linkedAuctionId)?.startTime;
+                const auctionStatus = p.linkedAuctionStatus;
+                const createdDate = p.createdAt
+                  ? new Date(p.createdAt).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: '2-digit' })
+                  : '—';
+
+                return (
+                  <tr
+                    key={p.id}
+                    className="hover:bg-slate-800/40 transition-colors cursor-pointer"
+                    onClick={() => { setViewProduct(p); setViewIndex(0); }}
+                  >
+                    {/* Product Details */}
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={(p.images && p.images[0]) || 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=900&h=600&fit=crop'}
+                          alt={p.name}
+                          className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
+                        />
+                        <div>
+                          <p className="font-bold text-white text-xs">{p.name}</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{p.description}</p>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className="bg-slate-800 text-purple-300 border border-slate-700 px-2.5 py-1 rounded-md text-xs font-medium">
-                      {p.category}
-                    </span>
-                  </td>
-                  <td className="p-4 font-mono font-bold text-slate-200">
-                    {(typeof p.retailValue === 'number' ? p.retailValue : 0).toLocaleString()} ETB
-                  </td>
-                  <td className="p-4">
-                    {p.linkedAuctionStatus ? (
-                      <span
-                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border ${
-                          p.linkedAuctionStatus === 'active'
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                            : p.linkedAuctionStatus === 'paused'
-                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                            : p.linkedAuctionStatus === 'closed'
-                            ? 'bg-slate-700/50 text-slate-300 border-slate-600/40'
-                            : 'bg-blue-500/10 text-blue-400 border-blue-500/30'
-                        }`}
-                      >
-                        Linked #{p.linkedAuctionId} ({p.linkedAuctionStatus.toUpperCase()})
+                    </td>
+
+                    {/* Category */}
+                    <td className="p-4">
+                      <span className="bg-slate-800 text-purple-300 border border-slate-700 px-2.5 py-1 rounded-md text-xs font-medium">
+                        {p.category}
                       </span>
-                    ) : (
-                      <span className="text-slate-500 text-[11px]">Unlinked (Available)</span>
-                    )}
-                  </td>
-                  <td className="p-4">
-                    {p.linkedAuctionId ? (
-                      (() => {
-                        const auction = auctions.find((a) => a.id === p.linkedAuctionId);
-                        return auction ? (
-                          <CountdownTimer endTime={auction.endTime} status={auction.status} />
-                        ) : (
-                          <span className="text-slate-400 text-[11px]">Auction missing</span>
-                        );
-                      })()
-                    ) : (
-                      <span className="text-slate-500 text-[11px]">No auction</span>
-                    )}
-                  </td>
-                  <td className="p-4 text-slate-400 font-mono text-[11px]">{p.createdAt}</td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleOpenEdit(p); }}
-                        className="p-1.5 text-slate-400 hover:text-purple-300 hover:bg-slate-800 rounded-md transition-colors"
-                        title="Edit Product"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setDeletingProduct(p); }}
-                        className="p-1.5 text-rose-400 hover:bg-rose-950/40 rounded-md transition-colors"
-                        title="Delete Product"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+
+                    {/* Retail Value — from backend */}
+                    <td className="p-4 font-mono font-bold text-slate-200">
+                      {(typeof p.retailValue === 'number' ? p.retailValue : 0).toLocaleString()} ETB
+                    </td>
+
+                    {/* Linked Auction Status — or "Create Auction" button */}
+                    <td className="p-4">
+                      {isLinked ? (
+                        <span
+                          className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border ${
+                            auctionStatus === 'active'
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                              : auctionStatus === 'paused'
+                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                              : auctionStatus === 'closed'
+                              ? 'bg-slate-700/50 text-slate-300 border-slate-600/40'
+                              : 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+                          }`}
+                        >
+                          {auctionStatus?.toUpperCase()}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={e => {
+                            e.stopPropagation();
+                            navigate(ADMIN_ROUTES.AUCTIONS);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 border border-purple-500/30 rounded-md text-[11px] font-semibold transition-colors"
+                          title="Go to Auctions to create an auction for this product"
+                        >
+                          <Link2 className="w-3 h-3" /> Create Auction
+                        </button>
+                      )}
+                    </td>
+
+                    {/* Auction Countdown — only if linked */}
+                    <td className="p-4">
+                      {isLinked && auctionEndTime && auctionStatus ? (
+                        <CountdownTimer endTime={auctionEndTime} status={auctionStatus} />
+                      ) : (
+                        <span className="text-slate-600 text-[11px]">—</span>
+                      )}
+                    </td>
+
+                    {/* Created Date — from DB */}
+                    <td className="p-4 text-slate-400 font-mono text-[11px]">{createdDate}</td>
+
+                    {/* Actions */}
+                    <td className="p-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleOpenEdit(p); }}
+                          className="p-1.5 text-slate-400 hover:text-purple-300 hover:bg-slate-800 rounded-md transition-colors"
+                          title="Edit Product"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeletingProduct(p); }}
+                          className="p-1.5 text-rose-400 hover:bg-rose-950/40 rounded-md transition-colors"
+                          title="Delete Product"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

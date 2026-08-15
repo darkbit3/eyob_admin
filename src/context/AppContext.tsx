@@ -85,6 +85,8 @@ function apiToProduct(p: any): Product {
     description: p.description ?? '',
     linkedAuctionId: p.linked_auction_id ?? p.linkedAuctionId ?? undefined,
     linkedAuctionStatus: p.linked_auction_status ?? p.linkedAuctionStatus ?? undefined,
+    linkedAuctionEndTime: p.linked_auction_end_time ?? p.linkedAuctionEndTime ?? undefined,
+    linkedAuctionStartTime: p.linked_auction_start_time ?? p.linkedAuctionStartTime ?? undefined,
     createdAt: p.created_at ?? p.createdAt ?? new Date().toISOString().split('T')[0],
   };
 }
