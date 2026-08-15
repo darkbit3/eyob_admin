@@ -341,6 +341,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.description !== undefined) payload.description = updates.description;
       if (updates.image !== undefined) payload.image_url = updates.image;
       if (updates.retailValue !== undefined) payload.retail_value = updates.retailValue;
+      if (updates.bidPerCost !== undefined) payload.bid_per_cost = updates.bidPerCost;
       if (updates.category !== undefined) payload.category = updates.category;
       if (updates.status !== undefined) payload.status = updates.status;
       if (updates.startTime !== undefined) payload.start_time = updates.startTime;
