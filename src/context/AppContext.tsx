@@ -181,7 +181,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Load persistent system settings from backend when available
     (async () => {
       try {
-        const res = await (await import('../utils/api')).settingsApi.get();
+        const res = await settingsApi.get();
         if (res && res.data) {
           setSettings(prev => ({ ...prev, ...{
             platformName: res.data.platform_name ?? res.data.platformName ?? prev.platformName,
