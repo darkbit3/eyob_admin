@@ -18,6 +18,7 @@ export default function AdminWallet() {
   const [matchedUsers, setMatchedUsers] = useState<typeof users>([]);
   const [selectedUser, setSelectedUser] = useState<typeof users[0] | null>(null);
   const [typeFilter, setTypeFilter] = useState('all');
+  const [methodFilter, setMethodFilter] = useState('');
   const [queueTab, setQueueTab] = useState<'pending' | 'history'>('pending');
 
   const [previewItem, setPreviewItem] = useState<PaymentQueueItem | null>(null);
@@ -28,6 +29,16 @@ export default function AdminWallet() {
   const [adjustmentAmount, setAdjustmentAmount] = useState(500);
   const [adjustmentType, setAdjustmentType] = useState<'credit' | 'wallet'>('wallet');
   const [adjustmentReason, setAdjustmentReason] = useState('Promotional bonus deposit');
+  const [modalUserSearch, setModalUserSearch] = useState('');
+  const [isModalUserDropdownOpen, setIsModalUserDropdownOpen] = useState(false);
+
+  const selectedUserObj = users.find(u => u.id === selectedUserId) || users[0];
+
+  useEffect(() => {
+    if (selectedUserObj && !modalUserSearch) {
+      setModalUserSearch(`${selectedUserObj.name} (${selectedUserObj.phone || selectedUserObj.email})`);
+    }
+  }, [selectedUserId]);
 
   function handleManualAdjustSubmit() {
     if (!selectedUserId || !adjustmentAmount) return;
@@ -48,7 +59,14 @@ export default function AdminWallet() {
     const desc = (t.description || '').toLowerCase();
     const matchesSearch = uname.includes(q) || desc.includes(q);
     const matchesType = typeFilter === 'all' || t.type === typeFilter;
-    return matchesSearch && matchesType;
+    const pm = (t.paymentMethod ?? '').toLowerCase();
+    const matchesMethod = !methodFilter || (
+      methodFilter === 'Chapa'  ? pm.includes('chapa') :
+      methodFilter === 'Manual' ? (pm.includes('manual') || pm.includes('bank') || pm.includes('cbe') || pm.includes('telebirr')) :
+      true
+    );
+    const matchesUser = !selectedUser || t.userId === selectedUser.id;
+    return matchesSearch && matchesType && matchesMethod && matchesUser;
   });
 
   const pendingQueue = paymentQueue.filter(p => p.status === 'pending');
@@ -68,7 +86,12 @@ export default function AdminWallet() {
         </div>
 
         <button
-          onClick={() => setShowAdjustmentModal(true)}
+          onClick={() => {
+            const u = users.find(usr => usr.id === selectedUserId) || users[0];
+            if (u) setModalUserSearch(`${u.name} (${u.phone || u.email})`);
+            setIsModalUserDropdownOpen(false);
+            setShowAdjustmentModal(true);
+          }}
           className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-purple-900/40 transition-all"
         >
           <PlusCircle className="w-4 h-4" /> Manual Wallet Adjustment
@@ -231,6 +254,17 @@ export default function AdminWallet() {
               <option value="manual_adjustment">Admin Adjustments</option>
               <option value="refund">Refunds</option>
             </select>
+
+            {/* Method filter */}
+            <select
+              value={methodFilter ?? 'all'}
+              onChange={e => setMethodFilter(e.target.value === 'all' ? '' : e.target.value)}
+              className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none"
+            >
+              <option value="all">All Methods</option>
+              <option value="Chapa">Chapa</option>
+              <option value="Manual">Manual</option>
+            </select>
           </div>
         </div>
 
@@ -298,6 +332,8 @@ export default function AdminWallet() {
                 <button
                   onClick={() => {
                     setSelectedUserId(selectedUser.id);
+                    setModalUserSearch(`${selectedUser.name} (${selectedUser.phone || selectedUser.email})`);
+                    setIsModalUserDropdownOpen(false);
                     setAdjustmentType('wallet');
                     setAdjustmentAmount(500);
                     setAdjustmentReason('Admin deposit');
@@ -310,6 +346,8 @@ export default function AdminWallet() {
                 <button
                   onClick={() => {
                     setSelectedUserId(selectedUser.id);
+                    setModalUserSearch(`${selectedUser.name} (${selectedUser.phone || selectedUser.email})`);
+                    setIsModalUserDropdownOpen(false);
                     setAdjustmentType('wallet');
                     setAdjustmentAmount(-500);
                     setAdjustmentReason('Admin withdrawal');
@@ -327,6 +365,7 @@ export default function AdminWallet() {
               <tr>
                 <th className="p-3">User</th>
                 <th className="p-3">Type</th>
+                <th className="p-3">Method</th>
                 <th className="p-3">Description</th>
                 <th className="p-3">Amount</th>
                 <th className="p-3">Status</th>
@@ -334,13 +373,33 @@ export default function AdminWallet() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              {filteredTx.map(t => (
+              {filteredTx.map(t => {
+                const method = t.paymentMethod ?? '';
+                const methodLabel = method.toLowerCase().includes('chapa') ? 'Chapa'
+                  : method.toLowerCase().includes('manual') || method.toLowerCase().includes('bank') || method.toLowerCase().includes('cbe') || method.toLowerCase().includes('telebirr') ? 'Manual'
+                  : method || '—';
+                const methodColor = methodLabel === 'Chapa'
+                  ? 'bg-purple-500/10 text-purple-300 border-purple-500/30'
+                  : methodLabel === 'Manual'
+                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                  : 'bg-slate-700/50 text-slate-400 border-slate-600/30';
+
+                return (
                 <tr key={t.id} className="hover:bg-slate-800/40">
                   <td className="p-3 font-semibold text-white">{t.userName}</td>
                   <td className="p-3">
                     <span className="bg-slate-800 text-purple-300 text-[10px] font-mono px-2 py-0.5 rounded border border-slate-700">
-                      {t.type.replace('_', ' ').toUpperCase()}
+                      {t.type.replace(/_/g, ' ').toUpperCase()}
                     </span>
+                  </td>
+                  <td className="p-3">
+                    {methodLabel !== '—' ? (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${methodColor}`}>
+                        {methodLabel}
+                      </span>
+                    ) : (
+                      <span className="text-slate-600 text-[10px]">—</span>
+                    )}
                   </td>
                   <td className="p-3 text-slate-300">{t.description}</td>
                   <td className="p-3 font-mono font-bold">
@@ -357,7 +416,8 @@ export default function AdminWallet() {
                     {t.timestamp ? new Date(t.timestamp).toLocaleString() : '—'}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -365,8 +425,14 @@ export default function AdminWallet() {
 
       {/* RECEIPT PREVIEW MODAL */}
       {previewItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+        <div
+          onClick={() => setPreviewItem(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 cursor-pointer"
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl cursor-default"
+          >
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white">Payment Receipt Verification</h3>
               <button onClick={() => setPreviewItem(null)} className="text-slate-400 hover:text-white">✕</button>
@@ -409,8 +475,14 @@ export default function AdminWallet() {
 
       {/* MANUAL ADJUSTMENT FORM MODAL */}
       {showAdjustmentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+        <div
+          onClick={() => setShowAdjustmentModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 cursor-pointer"
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl cursor-default"
+          >
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <PlusCircle className="w-5 h-5 text-purple-400" /> Manual Wallet Adjustment
@@ -419,17 +491,87 @@ export default function AdminWallet() {
             </div>
 
             <div className="space-y-3 text-xs">
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Select User</label>
-                <select
-                  value={selectedUserId}
-                  onChange={e => setSelectedUserId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white focus:outline-none focus:border-purple-500"
-                >
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
-                  ))}
-                </select>
+              <div className="relative">
+                <label className="block text-slate-300 font-semibold mb-1">Select User (Type Name or Phone)</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Type at least 3 chars/numbers to filter..."
+                    value={modalUserSearch}
+                    onFocus={() => setIsModalUserDropdownOpen(true)}
+                    onChange={e => {
+                      setModalUserSearch(e.target.value);
+                      setIsModalUserDropdownOpen(true);
+                    }}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-medium focus:outline-none focus:border-purple-500 pr-8"
+                  />
+                  {modalUserSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModalUserSearch('');
+                        setIsModalUserDropdownOpen(true);
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Dropdown User List */}
+                {isModalUserDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-slate-950 border border-slate-800 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto divide-y divide-slate-800/50">
+                    {modalUserSearch.trim().length > 0 && modalUserSearch.trim().length < 3 ? (
+                      <div className="p-3 text-center text-[11px] text-amber-400 font-semibold">
+                        Type at least 3 characters or numbers to start filtering...
+                      </div>
+                    ) : (
+                      (() => {
+                        const filtered = modalUserSearch.trim().length >= 3
+                          ? users.filter(u => {
+                              const q = modalUserSearch.toLowerCase().trim();
+                              return u.name.toLowerCase().includes(q) ||
+                                     (u.phone || '').includes(q) ||
+                                     (u.email || '').toLowerCase().includes(q);
+                            })
+                          : users;
+
+                        if (filtered.length === 0) {
+                          return (
+                            <div className="p-3 text-center text-xs text-slate-400">
+                              No users match "{modalUserSearch}"
+                            </div>
+                          );
+                        }
+
+                        return filtered.map(u => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedUserId(u.id);
+                              setModalUserSearch(`${u.name} (${u.phone || u.email})`);
+                              setIsModalUserDropdownOpen(false);
+                            }}
+                            className={`w-full text-left p-2.5 hover:bg-purple-950/40 transition-colors flex items-center justify-between ${selectedUserId === u.id ? 'bg-purple-900/30 text-purple-200' : 'text-slate-200'}`}
+                          >
+                            <span className="font-bold text-xs">{u.name}</span>
+                            <span className="font-mono text-[11px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                              {u.phone || u.email}
+                            </span>
+                          </button>
+                        ));
+                      })()
+                    )}
+                  </div>
+                )}
+                {selectedUserObj && !isModalUserDropdownOpen && (
+                  <div className="mt-1 text-[11px] text-slate-400 flex items-center gap-2">
+                    <span>Selected: <strong className="text-purple-300">{selectedUserObj.name}</strong> ({selectedUserObj.phone || selectedUserObj.email})</span>
+                    <span className="font-mono text-emerald-400 ml-auto">Balance: {selectedUserObj.walletBalance} ETB</span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -441,7 +583,6 @@ export default function AdminWallet() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white focus:outline-none focus:border-purple-500"
                   >
                     <option value="wallet">ETB Wallet Balance</option>
-                    <option value="credit">Bidding Credits</option>
                   </select>
                 </div>
                 <div>
