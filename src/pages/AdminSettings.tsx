@@ -1,7 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Settings, Shield, Save, CheckCircle2, Lock, ToggleLeft, ToggleRight, XCircle } from 'lucide-react';
+import { Settings, Shield, Save, CheckCircle2, Lock, ToggleLeft, ToggleRight, XCircle, Building2, Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { settingsApi } from '../utils/api';
+
+interface BankAccountItem {
+  id: string;
+  method_name: string;
+  account_number: string;
+  account_holder: string;
+  is_active: boolean;
+}
 
 export default function AdminSettings() {
   const { settings, updateSystemSettings } = useApp();
@@ -18,6 +26,109 @@ export default function AdminSettings() {
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Bank Accounts Management State
+  const [bankAccounts, setBankAccounts] = useState<BankAccountItem[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<BankAccountItem | null>(null);
+
+  const [formMethodName, setFormMethodName] = useState('');
+  const [formAccountNumber, setFormAccountNumber] = useState('');
+  const [formAccountHolder, setFormAccountHolder] = useState('');
+  const [formIsActive, setFormIsActive] = useState(true);
+
+  const [bankFormLoading, setBankFormLoading] = useState(false);
+  const [bankFormMsg, setBankFormMsg] = useState('');
+  const [bankFormMsgType, setBankFormMsgType] = useState<'success' | 'error'>('success');
+
+  useEffect(() => {
+    fetchBankAccounts();
+  }, []);
+
+  async function fetchBankAccounts() {
+    setLoadingAccounts(true);
+    try {
+      const res = await settingsApi.getBankAccounts();
+      if (res.success && Array.isArray(res.data)) {
+        setBankAccounts(res.data);
+      }
+    } catch (e) {}
+    finally { setLoadingAccounts(false); }
+  }
+
+  function handleOpenAddModal() {
+    setEditingAccount(null);
+    setFormMethodName('Commercial Bank of Ethiopia (CBE)');
+    setFormAccountNumber('');
+    setFormAccountHolder('BidLow Auctions PLC (Admin Official)');
+    setFormIsActive(true);
+    setBankFormMsg('');
+    setShowBankModal(true);
+  }
+
+  function handleOpenEditModal(acc: BankAccountItem) {
+    setEditingAccount(acc);
+    setFormMethodName(acc.method_name);
+    setFormAccountNumber(acc.account_number);
+    setFormAccountHolder(acc.account_holder);
+    setFormIsActive(acc.is_active !== false);
+    setBankFormMsg('');
+    setShowBankModal(true);
+  }
+
+  async function handleSaveBankForm(e: React.FormEvent) {
+    e.preventDefault();
+    if (!formMethodName || !formAccountNumber || !formAccountHolder) {
+      setBankFormMsg('All fields are required.');
+      setBankFormMsgType('error');
+      return;
+    }
+
+    setBankFormLoading(true);
+    setBankFormMsg('');
+    try {
+      if (editingAccount) {
+        const res = await settingsApi.updateBankAccount(editingAccount.id, {
+          method_name: formMethodName,
+          account_number: formAccountNumber,
+          account_holder: formAccountHolder,
+          is_active: formIsActive,
+        });
+        setBankFormMsg(`✓ ${res.message || 'Account updated successfully!'}`);
+        setBankFormMsgType('success');
+      } else {
+        const res = await settingsApi.createBankAccount({
+          method_name: formMethodName,
+          account_number: formAccountNumber,
+          account_holder: formAccountHolder,
+        });
+        setBankFormMsg(`✓ ${res.message || 'Account added successfully!'}`);
+        setBankFormMsgType('success');
+      }
+      await fetchBankAccounts();
+      setTimeout(() => {
+        setShowBankModal(false);
+        setBankFormMsg('');
+      }, 1200);
+    } catch (err: any) {
+      setBankFormMsg(`✗ ${err?.message || 'Failed to save account.'}`);
+      setBankFormMsgType('error');
+    } finally {
+      setBankFormLoading(false);
+    }
+  }
+
+  async function handleDeleteAccount(id: string) {
+    if (!window.confirm('Are you sure you want to delete this official bank account?')) return;
+    try {
+      await settingsApi.deleteBankAccount(id);
+      await fetchBankAccounts();
+    } catch (err: any) {
+      alert(err?.message || 'Failed to delete bank account.');
+    }
+  }
+
   async function handleSaveSettings(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -33,7 +144,6 @@ export default function AdminSettings() {
         default_bid_step: Number(defaultBidStep),
         maintenance_mode: maintenanceMode,
       });
-      // Sync local context so the rest of the UI reflects the new values
       updateSystemSettings({
         platformName,
         supportEmail,
@@ -73,7 +183,7 @@ export default function AdminSettings() {
       {/* Toast Alert */}
       {saveSuccess && (
         <div className="fixed top-4 right-4 z-50 p-3 bg-emerald-600 text-white font-semibold text-xs rounded-xl shadow-2xl flex items-center gap-2 animate-bounce">
-          <CheckCircle2 className="w-4 h-4" /> Platform Settings Saved & Synchronized!
+          <CheckCircle2 className="w-4 h-4" /> Platform Settings Saved &amp; Synchronized!
         </div>
       )}
       {saveError && (
@@ -85,11 +195,71 @@ export default function AdminSettings() {
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-white flex items-center gap-2">
-          <Settings className="w-5 h-5 text-purple-400" /> Platform Settings & Permissions
+          <Settings className="w-5 h-5 text-purple-400" /> Platform Settings &amp; Permissions
         </h1>
         <p className="text-slate-400 text-xs mt-0.5">
-          Configure default bidding boundaries, platform branding, currency rules, and administrative role matrices.
+          Configure default bidding boundaries, official admin bank accounts, currency rules, and administrative role matrices.
         </p>
+      </div>
+
+      {/* ── OFFICIAL ADMIN BANK ACCOUNTS MANAGEMENT CARD ────────────────── */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-emerald-400" /> Official Admin Bank Accounts &amp; Deposit Methods
+            </h2>
+            <p className="text-slate-400 text-xs mt-0.5">
+              These accounts are displayed live to customers in the Manual Deposit &amp; Transfer section on the frontend.
+            </p>
+          </div>
+          <button
+            onClick={handleOpenAddModal}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-emerald-900/40 transition-all"
+          >
+            <Plus className="w-4 h-4" /> Add Official Account
+          </button>
+        </div>
+
+        {loadingAccounts ? (
+          <div className="flex items-center justify-center p-8 text-xs text-slate-400 gap-2 font-semibold">
+            <Loader2 className="w-4 h-4 animate-spin text-emerald-400" /> Loading official bank accounts...
+          </div>
+        ) : bankAccounts.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {bankAccounts.map(acc => (
+              <div key={acc.id} className="p-4 bg-slate-950/80 border border-slate-800 rounded-xl flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-xs">{acc.method_name}</span>
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${acc.is_active !== false ? 'bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold' : 'bg-slate-800 text-slate-400'}`}>
+                      {acc.is_active !== false ? '● ACTIVE' : '○ INACTIVE'}
+                    </span>
+                  </div>
+                  <p className="text-slate-400 text-xs mt-1">{acc.account_holder}</p>
+                  <p className="font-mono text-emerald-400 font-bold text-sm mt-1">{acc.account_number}</p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-slate-800/80 pt-2.5">
+                  <button
+                    onClick={() => handleOpenEditModal(acc)}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-purple-300 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <Edit2 className="w-3 h-3" /> Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteAccount(acc.id)}
+                    className="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3 h-3" /> Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-500 italic py-4">No bank accounts configured yet. Click "Add Official Account" to create one.</p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -192,7 +362,7 @@ export default function AdminSettings() {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Shield className="w-4 h-4 text-purple-400" /> Roles & Permissions Control Matrix
+              <Shield className="w-4 h-4 text-purple-400" /> Roles &amp; Permissions Control Matrix
             </h2>
             <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">Interactive Matrix</span>
           </div>
@@ -267,6 +437,107 @@ export default function AdminSettings() {
           </div>
         </div>
       </div>
+
+      {/* ── BANK ACCOUNT EDIT / ADD MODAL ──────────────────────────────── */}
+      {showBankModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-emerald-400" />
+                {editingAccount ? 'Edit Official Bank Account' : 'Add New Official Bank Account'}
+              </h3>
+              <button
+                onClick={() => setShowBankModal(false)}
+                className="text-slate-400 hover:text-white font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {bankFormMsg && (
+              <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${bankFormMsgType === 'success' ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800' : 'bg-rose-950/80 text-rose-300 border border-rose-800'}`}>
+                {bankFormMsgType === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <XCircle className="w-4 h-4 text-rose-400 shrink-0" />}
+                <span>{bankFormMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveBankForm} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Method / Bank Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Commercial Bank of Ethiopia (CBE), Telebirr, CBE Birr"
+                  value={formMethodName}
+                  onChange={e => setFormMethodName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Account / Merchant Number</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 1000 4829 10482 or 0911 002 233"
+                  value={formAccountNumber}
+                  onChange={e => setFormAccountNumber(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Account Holder Full Name (Admin)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. BidLow Auctions PLC (Admin Official)"
+                  value={formAccountHolder}
+                  onChange={e => setFormAccountHolder(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              {editingAccount && (
+                <div className="flex items-center gap-2 p-3 bg-slate-950 rounded-xl border border-slate-800">
+                  <input
+                    type="checkbox"
+                    id="is_active_chk"
+                    checked={formIsActive}
+                    onChange={e => setFormIsActive(e.target.checked)}
+                    className="rounded border-slate-800 bg-slate-900 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <label htmlFor="is_active_chk" className="text-slate-300 font-semibold cursor-pointer">
+                    Active Account (visible on customer deposit page)
+                  </label>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBankModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={bankFormLoading}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold rounded-xl flex items-center gap-1.5 shadow-lg shadow-emerald-900/40"
+                >
+                  {bankFormLoading ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                  ) : (
+                    <><Save className="w-4 h-4" /> Save Account</>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

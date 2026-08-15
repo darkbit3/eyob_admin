@@ -182,6 +182,22 @@ export const settingsApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+  getBankAccounts: () =>
+    request<{ success: boolean; data: any[] }>('/settings/bank-accounts'),
+  createBankAccount: (data: { method_name: string; account_number: string; account_holder: string }) =>
+    request<{ success: boolean; message?: string; data: any }>('/settings/bank-accounts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateBankAccount: (id: string, data: Partial<{ method_name: string; account_number: string; account_holder: string; is_active: boolean }>) =>
+    request<{ success: boolean; message?: string; data: any }>(`/settings/bank-accounts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteBankAccount: (id: string) =>
+    request<{ success: boolean; message?: string }>(`/settings/bank-accounts/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 // ── Winners ───────────────────────────────────────────────────────────────────
