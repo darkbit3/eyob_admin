@@ -24,6 +24,7 @@ export default function AdminWallet() {
   const [queueTab, setQueueTab] = useState<'pending' | 'history'>('pending');
 
   const [previewItem, setPreviewItem] = useState<PaymentQueueItem | null>(null);
+  const [historyDetailItem, setHistoryDetailItem] = useState<PaymentQueueItem | null>(null);
 
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [adjustmentMode, setAdjustmentMode] = useState<'deposit' | 'withdraw'>('deposit');
@@ -146,6 +147,11 @@ export default function AdminWallet() {
         if (!active) return;
         setTransactions((txRes.data || []).map((t: any) => ({
           ...t,
+          userId: t.user_id || t.userId,
+          userName: t.user_name || t.userName || 'Customer',
+          userEmail: t.user_email || t.userEmail || '',
+          userPhone: t.user_phone || t.userPhone || '',
+          paymentMethod: t.payment_method || t.paymentMethod || '',
           timestamp: t.timestamp || t.created_at || t.createdAt || new Date().toISOString(),
           amount: Number(t.amount || 0),
         })));
@@ -267,14 +273,27 @@ export default function AdminWallet() {
     const q = (searchTerm || '').toLowerCase();
     const uname = (t.userName || '').toLowerCase();
     const desc = (t.description || '').toLowerCase();
-    const matchesSearch = uname.includes(q) || desc.includes(q);
-    const matchesType = typeFilter === 'all' || t.type === typeFilter;
+    const matchesSearch = !q || uname.includes(q) || desc.includes(q);
+
+    // Type filter matching
+    const isUnlock = t.type === 'bid_fee_paid' || desc.includes('unlock entry fee');
+    const isManualDep = t.type === 'manual_adjustment' && Number(t.amount || 0) >= 0;
+    const isManualWd = t.type === 'manual_withdrawal' || (t.type === 'manual_adjustment' && Number(t.amount || 0) < 0);
+    const matchesType = typeFilter === 'all' || (
+      typeFilter === 'bid_fee_paid' ? isUnlock :
+      typeFilter === 'manual_adjustment' ? isManualDep :
+      typeFilter === 'manual_withdrawal' ? isManualWd :
+      t.type === typeFilter
+    );
+
+    // Method filter matching
     const pm = (t.paymentMethod ?? '').toLowerCase();
     const matchesMethod = !methodFilter || (
-      methodFilter === 'Chapa'  ? pm.includes('chapa') :
-      methodFilter === 'Manual' ? (pm.includes('manual') || pm.includes('bank') || pm.includes('cbe') || pm.includes('telebirr')) :
+      methodFilter === 'Chapa'  ? (pm.includes('chapa') || desc.includes('chapa')) :
+      methodFilter === 'Manual' ? (pm.includes('manual') || pm.includes('bank') || pm.includes('cbe') || pm.includes('telebirr') || desc.includes('manual') || isManualDep || isManualWd) :
       true
     );
+
     const matchesUser = !selectedUser || t.userId === selectedUser.id;
     return matchesSearch && matchesType && matchesMethod && matchesUser;
   });
@@ -443,29 +462,46 @@ export default function AdminWallet() {
           )
         ) : (
           <div className="divide-y divide-slate-800/60 text-xs">
-            {historyQueue.map(item => {
-              const isChapa = (item.paymentMethod || '').toLowerCase().includes('chapa');
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => isChapa && openChapaDetailModal(item)}
-                  className={`py-2.5 flex items-center justify-between transition-colors ${isChapa ? 'hover:bg-slate-800/60 cursor-pointer' : ''}`}
-                >
-                  <div className="flex items-center gap-2">
-                    {isChapa && <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
-                    <span className="font-semibold text-white">{item.userName}</span>
-                    <span className="text-[11px] text-slate-400 ml-1">({item.paymentMethod} • Ref: {item.referenceNumber})</span>
+            {historyQueue.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 text-xs">
+                No past audit history records found.
+              </div>
+            ) : (
+              historyQueue.map(item => {
+                const isChapa = (item.paymentMethod || '').toLowerCase().includes('chapa');
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => {
+                      if (isChapa) openChapaDetailModal(item);
+                      else setHistoryDetailItem(item);
+                    }}
+                    className="py-3 px-3 rounded-xl flex items-center justify-between transition-colors hover:bg-slate-800/60 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      {isChapa && <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                      <span className="font-bold text-white">{item.userName}</span>
+                      <span className="text-[11px] text-slate-400 ml-1 font-mono">
+                        ({item.paymentMethod} &bull; Ref: {item.referenceNumber || '—'})
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 font-mono">
+                      <span className="text-slate-200 font-bold">{item.amount} ETB</span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold border ${
+                        item.status === 'approved'
+                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                          : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                      }`}>
+                        {isChapa ? '⚡ Auto-Credited' : item.status}
+                      </span>
+                      <span className="text-xs text-purple-400 font-sans font-bold hover:underline">
+                        Details &rarr;
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 font-mono">
-                    <span className="text-slate-300">{item.amount} ETB</span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${item.status === 'approved' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
-                      {isChapa ? '⚡ Auto-Credited' : item.status}
-                    </span>
-                    {isChapa && <span className="text-xs text-purple-400 font-sans font-bold">Details →</span>}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         )}
       </div>
@@ -1106,6 +1142,99 @@ export default function AdminWallet() {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* AUDIT HISTORY SHORT DETAIL MODAL */}
+      {historyDetailItem && (
+        <div
+          onClick={() => setHistoryDetailItem(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 cursor-pointer"
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl cursor-default animate-in fade-in"
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-purple-400" />
+                <h3 className="text-base font-bold text-white">Payment Audit Record</h3>
+              </div>
+              <button
+                onClick={() => setHistoryDetailItem(null)}
+                className="text-slate-400 hover:text-white text-sm font-bold bg-slate-800 p-1.5 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Receipt slip if available */}
+            {historyDetailItem.receiptImage && historyDetailItem.receiptImage !== 'admin-withdrawal' && (
+              <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 max-h-48 flex items-center justify-center">
+                <img
+                  src={historyDetailItem.receiptImage}
+                  alt="Receipt Slip"
+                  className="w-full h-48 object-cover"
+                  onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              </div>
+            )}
+
+            {/* Audit Details */}
+            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">User / Payer:</span>
+                <span className="font-bold text-white">{historyDetailItem.userName}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Email:</span>
+                <span className="font-mono text-slate-300">{historyDetailItem.userEmail || '—'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Payment Method:</span>
+                <span className="font-bold text-purple-300 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-800/50">
+                  {historyDetailItem.paymentMethod}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Reference / TXN Code:</span>
+                <span className="font-mono text-amber-300 font-bold select-all">
+                  {historyDetailItem.referenceNumber || '—'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Amount:</span>
+                <span className="font-mono font-black text-emerald-400 text-sm">
+                  {Number(historyDetailItem.amount) >= 0 ? `+${historyDetailItem.amount}` : historyDetailItem.amount} ETB
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Status:</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold border ${
+                  historyDetailItem.status === 'approved'
+                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                    : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                }`}>
+                  {historyDetailItem.status.toUpperCase()}
+                </span>
+              </div>
+              {historyDetailItem.notes && (
+                <div className="pt-1 border-t border-slate-800/60">
+                  <span className="text-slate-400 block mb-0.5">Notes:</span>
+                  <p className="text-slate-300 italic text-[11px] bg-slate-900 p-2 rounded-lg border border-slate-800">
+                    "{historyDetailItem.notes}"
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setHistoryDetailItem(null)}
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition-colors text-xs"
+            >
+              Close Record
+            </button>
           </div>
         </div>
       )}
