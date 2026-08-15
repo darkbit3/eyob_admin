@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { Auction, AuctionStatus, Product } from '../data/mockData';
-import { bidsApi } from '../utils/api';
+import { bidsApi, auctionsApi } from '../utils/api';
 import {
   Gavel, Search, Plus, Edit2, PauseCircle, PlayCircle, XCircle, ShieldAlert,
-  ChevronDown, ChevronUp, Users, Trophy, CheckCircle, Loader2
+  ChevronDown, ChevronUp, Users, Trophy, CheckCircle, Loader2, RefreshCw
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ interface BidRow {
 }
 
 export default function AdminAuctions() {
-  const { auctions, products, createAuction, updateAuction, pauseAuction, resumeAuction, cancelAuction } = useApp();
+  const { auctions, products, createAuction, updateAuction, pauseAuction, resumeAuction, cancelAuction, setAuctions } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -31,6 +31,37 @@ export default function AdminAuctions() {
 
   const [showDrawer, setShowDrawer] = useState(false);
   const [editingAuction, setEditingAuction] = useState<Auction | null>(null);
+
+  // ── Manual refresh ────────────────────────────────────────────────────────
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+
+  const manualRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const res = await auctionsApi.list();
+      setAuctions(res.data.map((a: any) => ({
+        id: a.id,
+        title: a.title,
+        description: a.description ?? '',
+        image: a.image_url ?? a.image ?? '',
+        retailValue: Number(a.retail_value ?? a.retailValue ?? 0),
+        bidPerCost: Number(a.bid_per_cost ?? a.bidPerCost ?? 100),
+        category: a.category,
+        status: a.status,
+        startTime: a.start_time ?? a.startTime ?? '',
+        endTime: a.end_time ?? a.endTime ?? '',
+        minBid: Number(a.min_bid ?? a.minBid ?? 1),
+        maxBid: Number(a.max_bid ?? a.maxBid ?? 500),
+        totalParticipants: Number(a.total_participants ?? a.totalParticipants ?? 0),
+        totalBids: Number(a.total_bids ?? a.totalBids ?? 0),
+        productId: a.product_id ?? a.productId ?? undefined,
+      })));
+      setLastRefreshed(new Date());
+      if (expandedAuctionId) fetchBids(expandedAuctionId, false);
+    } catch (e) {}
+    finally { setRefreshing(false); }
+  }, [expandedAuctionId]);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -54,16 +85,9 @@ export default function AdminAuctions() {
   const [bidData, setBidData] = useState<BidRow[]>([]);
   const [bidsLoading, setBidsLoading] = useState(false);
 
-  function toggleBidders(auctionId: string) {
-    if (expandedAuctionId === auctionId) {
-      // collapse
-      setExpandedAuctionId(null);
-      setBidData([]);
-      return;
-    }
-    setExpandedAuctionId(auctionId);
-    setBidData([]);
-    setBidsLoading(true);
+  // fetch (or re-fetch) bids for the expanded auction
+  function fetchBids(auctionId: string, showSpinner = true) {
+    if (showSpinner) setBidsLoading(true);
     bidsApi.forAuction(auctionId)
       .then(res => {
         setBidData((res.data || []).map((b: any) => ({
@@ -82,6 +106,24 @@ export default function AdminAuctions() {
       .catch(() => setBidData([]))
       .finally(() => setBidsLoading(false));
   }
+
+  function toggleBidders(auctionId: string) {
+    if (expandedAuctionId === auctionId) {
+      setExpandedAuctionId(null);
+      setBidData([]);
+      return;
+    }
+    setExpandedAuctionId(auctionId);
+    setBidData([]);
+    fetchBids(auctionId, true);
+  }
+
+  // Live-poll bids every 15s while a panel is open
+  useEffect(() => {
+    if (!expandedAuctionId) return;
+    const id = window.setInterval(() => fetchBids(expandedAuctionId, false), 15000);
+    return () => window.clearInterval(id);
+  }, [expandedAuctionId]);
 
   function resetForm() {
     setEditingAuction(null);
@@ -229,12 +271,27 @@ export default function AdminAuctions() {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-purple-900/40 transition-all"
-        >
-          <Plus className="w-4 h-4" /> Create New Auction
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Last refreshed + manual refresh */}
+          <span className="text-slate-500 text-[10px] font-mono hidden sm:block">
+            Updated {lastRefreshed.toLocaleTimeString()}
+          </span>
+          <button
+            onClick={manualRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl transition-all disabled:opacity-50"
+            title="Refresh auction data"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <button
+            onClick={handleOpenCreate}
+            className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-purple-900/40 transition-all"
+          >
+            <Plus className="w-4 h-4" /> Create New Auction
+          </button>
+        </div>
       </div>
 
       {/* Filter Bar */}

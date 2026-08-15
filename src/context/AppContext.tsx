@@ -202,6 +202,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .catch(() => {});
   }, []);
 
+  // ── Live poll: refresh auctions every 30s so bids/participants stay current ──
+  useEffect(() => {
+    let id: number | undefined;
+    async function pollAuctions() {
+      try {
+        const res = await auctionsApi.list();
+        setAuctions(res.data.map(apiToAuction));
+      } catch (e) {}
+    }
+    if (currentUser) {
+      pollAuctions();
+      id = window.setInterval(pollAuctions, 30000);
+    }
+    return () => { if (id) window.clearInterval(id); };
+  }, [currentUser?.id]);
+
   // Poll current admin profile (to keep admin wallet balance up-to-date in UI)
   useEffect(() => {
     let id: number | undefined;
