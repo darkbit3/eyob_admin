@@ -50,6 +50,46 @@ export default function AdminWallet() {
 
   const selectedUserObj = users.find(u => u.id === selectedUserId) || users[0];
 
+  // Fetch real database data on page mount
+  useEffect(() => {
+    let active = true;
+    async function loadRealDatabaseData() {
+      try {
+        const usersRes = await usersApi.list();
+        if (!active) return;
+        setUsers(usersRes.data.map((u: any) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email ?? '',
+          phone: u.phone ?? '',
+          role: u.role,
+          walletBalance: Number(u.wallet_balance ?? u.walletBalance ?? 0),
+          credits: Number(u.credits ?? 0),
+          status: u.status,
+          joinedAt: u.joined_at ?? u.joinedAt ?? new Date().toISOString().split('T')[0],
+          wonAuctions: u.won_auctions ?? u.wonAuctions ?? [],
+          photo: u.photo_url ?? u.photo ?? undefined,
+        })));
+
+        const txRes = await walletApi.allTransactions();
+        if (!active) return;
+        setTransactions((txRes.data || []).map((t: any) => ({
+          ...t,
+          timestamp: t.timestamp || t.created_at || t.createdAt || new Date().toISOString(),
+          amount: Number(t.amount || 0),
+        })));
+
+        const qRes = await walletApi.queue();
+        if (!active) return;
+        setPaymentQueue(qRes.data || []);
+      } catch (_err) {
+        // silently fallback to context state if unauthenticated or offline
+      }
+    }
+    loadRealDatabaseData();
+    return () => { active = false; };
+  }, []);
+
   useEffect(() => {
     if (selectedUserObj && !modalUserSearch) {
       setModalUserSearch(`${selectedUserObj.name} (${selectedUserObj.phone || selectedUserObj.email})`);
