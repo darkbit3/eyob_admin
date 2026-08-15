@@ -233,6 +233,7 @@ export default function AdminAuctions() {
           category,
           image: imageUrl,
           retailValue,
+          bidPerCost,
           minBid,
           maxBid,
           startTime,

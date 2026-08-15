@@ -312,6 +312,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         description: auctionData.description,
         image_url: auctionData.image,
         retail_value: auctionData.retailValue,
+        bid_per_cost: auctionData.bidPerCost ?? 100,
         category: auctionData.category,
         status: auctionData.status,
         start_time: auctionData.startTime,
