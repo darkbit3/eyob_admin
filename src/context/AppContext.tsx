@@ -6,7 +6,7 @@ import {
 import {
   getToken, removeToken,
   usersApi, auctionsApi, productsApi, bidsApi,
-  walletApi, notificationsApi, auditApi,
+  walletApi, notificationsApi, auditApi, settingsApi,
 } from '../utils/api';
 
 interface AppContextType {
