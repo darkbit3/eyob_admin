@@ -4,13 +4,13 @@ import { usersApi, walletApi } from '../utils/api';
 import { PaymentQueueItem } from '../data/mockData';
 import {
   Wallet, Search, CheckCircle2, XCircle, PlusCircle, MinusCircle,
-  Image as ImageIcon, CreditCard, Loader2
+  Image as ImageIcon, CreditCard, Loader2, Zap, ShieldCheck
 } from 'lucide-react';
 
 export default function AdminWallet() {
   const {
     transactions, setTransactions, paymentQueue, setPaymentQueue,
-    users, setUsers, approvePayment, rejectPayment, adjustUserWallet
+    users, setUsers, approvePayment, rejectPayment, adjustUserWallet, currentUser
   } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,6 +35,19 @@ export default function AdminWallet() {
   const [adjustState, setAdjustState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [adjustMsg, setAdjustMsg] = useState('');
 
+  const [selectedChapaTx, setSelectedChapaTx] = useState<{
+    userName: string;
+    userEmail: string;
+    userPhone: string;
+    amount: number;
+    credits?: number;
+    referenceNumber?: string;
+    timestamp: string;
+    beforeBalance: number;
+    afterBalance: number;
+    adminBalance: number;
+  } | null>(null);
+
   const selectedUserObj = users.find(u => u.id === selectedUserId) || users[0];
 
   useEffect(() => {
@@ -42,6 +55,43 @@ export default function AdminWallet() {
       setModalUserSearch(`${selectedUserObj.name} (${selectedUserObj.phone || selectedUserObj.email})`);
     }
   }, [selectedUserId]);
+
+  function openChapaDetailModal(item: {
+    userId?: string;
+    userName?: string;
+    userEmail?: string;
+    amount: number;
+    credits?: number;
+    referenceNumber?: string;
+    description?: string;
+    timestamp?: string;
+    created_at?: string;
+  }) {
+    const u = users.find(usr =>
+      (item.userId && usr.id === item.userId) ||
+      (item.userEmail && usr.email === item.userEmail) ||
+      usr.name === item.userName
+    );
+
+    const amt = Number(item.amount || 0);
+    const currentBal = Number(u?.walletBalance || 0);
+    const beforeBal = Math.max(0, currentBal - amt);
+    const afterBal = currentBal;
+    const adminBal = Number(currentUser?.walletBalance || 0);
+
+    setSelectedChapaTx({
+      userName: u?.name || item.userName || 'Customer',
+      userEmail: u?.email || item.userEmail || '—',
+      userPhone: u?.phone || '—',
+      amount: amt,
+      credits: item.credits,
+      referenceNumber: item.referenceNumber || item.description?.match(/Ref:\s*(\w+)/i)?.[1] || 'CHAPA-AUTO',
+      timestamp: item.timestamp || item.created_at || new Date().toISOString(),
+      beforeBalance: beforeBal,
+      afterBalance: afterBal,
+      adminBalance: adminBal,
+    });
+  }
 
   function openAdjustmentModal(mode: 'deposit' | 'withdraw', targetUserId?: string) {
     const uid = targetUserId || selectedUserId || users[0]?.id || '';
@@ -182,52 +232,72 @@ export default function AdminWallet() {
         {queueTab === 'pending' ? (
           pendingQueue.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {pendingQueue.map(item => (
-                <div key={item.id} className="p-4 bg-slate-950/70 border border-slate-800 rounded-xl flex flex-col justify-between space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-bold text-white text-xs">{item.userName}</p>
-                      <p className="text-[11px] text-slate-400">{item.userEmail}</p>
-                      <div className="mt-1 flex items-center gap-2">
-                        <span className="bg-slate-800 text-purple-300 text-[10px] font-mono px-2 py-0.5 rounded border border-slate-700">
-                          {item.paymentMethod}
-                        </span>
-                        <span className="text-[11px] text-slate-400 font-mono">Ref: {item.referenceNumber}</span>
+              {pendingQueue.map(item => {
+                const isChapa = (item.paymentMethod || '').toLowerCase().includes('chapa');
+                return (
+                  <div key={item.id} className="p-4 bg-slate-950/70 border border-slate-800 rounded-xl flex flex-col justify-between space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-bold text-white text-xs">{item.userName}</p>
+                        <p className="text-[11px] text-slate-400">{item.userEmail}</p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${isChapa ? 'bg-purple-950 text-purple-300 border-purple-800 font-bold' : 'bg-slate-800 text-purple-300 border-slate-700'}`}>
+                            {item.paymentMethod}
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-mono">Ref: {item.referenceNumber}</span>
+                        </div>
+                      </div>
+                      <div className="text-right font-mono">
+                        <span className="text-base font-bold text-emerald-400">+{item.amount} ETB</span>
+                        <p className="text-[10px] text-slate-400">{item.credits} Credits</p>
                       </div>
                     </div>
-                    <div className="text-right font-mono">
-                      <span className="text-base font-bold text-emerald-400">+{item.amount} ETB</span>
-                      <p className="text-[10px] text-slate-400">{item.credits} Credits</p>
+
+                    <p className="text-[11px] text-slate-400 italic">"{item.notes}"</p>
+
+                    <div className="flex items-center justify-between border-t border-slate-800/80 pt-3">
+                      {isChapa ? (
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                            <Zap className="w-3.5 h-3.5 text-amber-400 animate-pulse" /> Auto-Credited via Gateway
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => openChapaDetailModal(item)}
+                            className="text-xs bg-slate-800 hover:bg-slate-700 text-purple-300 px-3 py-1.5 rounded-lg font-bold transition-colors"
+                          >
+                            Details →
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => setPreviewItem(item)}
+                            className="text-xs text-purple-400 hover:text-purple-300 font-medium flex items-center gap-1"
+                          >
+                            <ImageIcon className="w-3.5 h-3.5" /> View Receipt Slip
+                          </button>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => rejectPayment(item.id)}
+                              className="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-300 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1"
+                            >
+                              <XCircle className="w-3.5 h-3.5" /> Reject
+                            </button>
+                            <button
+                              onClick={() => approvePayment(item.id)}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg shadow-md shadow-emerald-900/30 transition-colors flex items-center gap-1"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Approve & Credit
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
-
-                  <p className="text-[11px] text-slate-400 italic">"{item.notes}"</p>
-
-                  <div className="flex items-center justify-between border-t border-slate-800/80 pt-3">
-                    <button
-                      onClick={() => setPreviewItem(item)}
-                      className="text-xs text-purple-400 hover:text-purple-300 font-medium flex items-center gap-1"
-                    >
-                      <ImageIcon className="w-3.5 h-3.5" /> View Receipt Slip
-                    </button>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => rejectPayment(item.id)}
-                        className="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-300 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1"
-                      >
-                        <XCircle className="w-3.5 h-3.5" /> Reject
-                      </button>
-                      <button
-                        onClick={() => approvePayment(item.id)}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg shadow-md shadow-emerald-900/30 transition-colors flex items-center gap-1"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Approve & Credit
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="p-8 text-center text-slate-500 text-xs">
@@ -236,20 +306,29 @@ export default function AdminWallet() {
           )
         ) : (
           <div className="divide-y divide-slate-800/60 text-xs">
-            {historyQueue.map(item => (
-              <div key={item.id} className="py-2.5 flex items-center justify-between">
-                <div>
-                  <span className="font-semibold text-white">{item.userName}</span>
-                  <span className="text-[11px] text-slate-400 ml-2">({item.paymentMethod} • Ref: {item.referenceNumber})</span>
+            {historyQueue.map(item => {
+              const isChapa = (item.paymentMethod || '').toLowerCase().includes('chapa');
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => isChapa && openChapaDetailModal(item)}
+                  className={`py-2.5 flex items-center justify-between transition-colors ${isChapa ? 'hover:bg-slate-800/60 cursor-pointer' : ''}`}
+                >
+                  <div className="flex items-center gap-2">
+                    {isChapa && <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                    <span className="font-semibold text-white">{item.userName}</span>
+                    <span className="text-[11px] text-slate-400 ml-1">({item.paymentMethod} • Ref: {item.referenceNumber})</span>
+                  </div>
+                  <div className="flex items-center gap-3 font-mono">
+                    <span className="text-slate-300">{item.amount} ETB</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${item.status === 'approved' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
+                      {isChapa ? '⚡ Auto-Credited' : item.status}
+                    </span>
+                    {isChapa && <span className="text-xs text-purple-400 font-sans font-bold">Details →</span>}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 font-mono">
-                  <span className="text-slate-300">{item.amount} ETB</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${item.status === 'approved' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
-                    {item.status}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -420,9 +499,19 @@ export default function AdminWallet() {
                   ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
                   : 'bg-slate-700/50 text-slate-400 border-slate-600/30';
 
+                const isChapaTx = methodLabel === 'Chapa' || (t.description || '').toLowerCase().includes('chapa');
                 return (
-                <tr key={t.id} className="hover:bg-slate-800/40">
-                  <td className="p-3 font-semibold text-white">{t.userName}</td>
+                <tr
+                  key={t.id}
+                  onClick={() => isChapaTx && openChapaDetailModal(t)}
+                  className={`transition-colors ${isChapaTx ? 'hover:bg-purple-950/30 cursor-pointer' : 'hover:bg-slate-800/40'}`}
+                >
+                  <td className="p-3 font-semibold text-white">
+                    <div className="flex items-center gap-1.5">
+                      {isChapaTx && <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                      <span>{t.userName}</span>
+                    </div>
+                  </td>
                   <td className="p-3">
                     <span className="bg-slate-800 text-purple-300 text-[10px] font-mono px-2 py-0.5 rounded border border-slate-700">
                       {t.type.replace(/_/g, ' ').toUpperCase()}
@@ -437,7 +526,10 @@ export default function AdminWallet() {
                       <span className="text-slate-600 text-[10px]">—</span>
                     )}
                   </td>
-                  <td className="p-3 text-slate-300">{t.description}</td>
+                  <td className="p-3 text-slate-300">
+                    {t.description}
+                    {isChapaTx && <span className="text-[10px] text-purple-400 font-bold ml-2">(Click for Chapa Ledger Details)</span>}
+                  </td>
                   <td className="p-3 font-mono font-bold">
                     <span className={Number(t.amount) >= 0 ? 'text-emerald-400' : 'text-slate-400'}>
                       {Number(t.amount) >= 0 ? `+${Number(t.amount).toFixed(2)}` : Number(t.amount).toFixed(2)} ETB
@@ -458,6 +550,104 @@ export default function AdminWallet() {
           </table>
         </div>
       </div>
+
+      {/* CHAPA AUTOMATED GATEWAY PAYMENT AUDIT MODAL */}
+      {selectedChapaTx && (
+        <div
+          onClick={() => setSelectedChapaTx(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 cursor-pointer"
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl cursor-default text-xs"
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-amber-400 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Chapa Automatic Gateway Audit</h3>
+                  <p className="text-[10px] text-emerald-400 font-semibold">⚡ Auto-Verified &amp; Credited</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedChapaTx(null)} className="text-slate-400 hover:text-white text-base font-bold">✕</button>
+            </div>
+
+            {/* User Profile */}
+            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-2">
+              <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">User Details</p>
+              <div className="grid grid-cols-2 gap-2 text-slate-200">
+                <div>
+                  <p className="text-slate-500 text-[10px]">User Name</p>
+                  <p className="font-bold text-white text-xs">{selectedChapaTx.userName}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[10px]">Phone Number</p>
+                  <p className="font-mono text-cyan-300 text-xs">{selectedChapaTx.userPhone}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-slate-500 text-[10px]">Email Address</p>
+                  <p className="font-mono text-slate-300 text-xs">{selectedChapaTx.userEmail}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Summary */}
+            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-2">
+              <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Payment Details</p>
+              <div className="grid grid-cols-2 gap-2 text-slate-200 font-mono">
+                <div>
+                  <p className="text-slate-500 text-[10px] font-sans">Payment Amount</p>
+                  <p className="font-black text-emerald-400 text-sm">+{selectedChapaTx.amount.toFixed(2)} ETB</p>
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[10px] font-sans">Gateway Ref Code</p>
+                  <p className="font-bold text-amber-300 text-xs truncate">{selectedChapaTx.referenceNumber}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-slate-500 text-[10px] font-sans">Date &amp; Time</p>
+                  <p className="text-slate-300 text-xs">{new Date(selectedChapaTx.timestamp).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Before & After User Balance + Admin Balance */}
+            <div className="bg-gradient-to-br from-slate-950 to-indigo-950/40 border border-slate-800 rounded-2xl p-4 space-y-3">
+              <p className="text-[10px] uppercase font-bold text-indigo-300 tracking-wider flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" /> Platform Ledger Audit
+              </p>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+                  <p className="text-slate-400 text-[10px]">User Before Balance</p>
+                  <p className="font-bold font-mono text-slate-300 text-xs mt-0.5">{selectedChapaTx.beforeBalance.toFixed(2)} ETB</p>
+                </div>
+                <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-2.5">
+                  <p className="text-emerald-400 text-[10px] font-bold">User After Balance</p>
+                  <p className="font-black font-mono text-emerald-300 text-xs mt-0.5">{selectedChapaTx.afterBalance.toFixed(2)} ETB</p>
+                </div>
+              </div>
+
+              <div className="bg-purple-950/40 border border-purple-500/30 rounded-xl p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-purple-300 text-[10px] font-bold">Admin / Platform Balance</p>
+                  <p className="text-[9px] text-slate-400">Current platform ledger balance</p>
+                </div>
+                <span className="font-black font-mono text-purple-200 text-sm">{selectedChapaTx.adminBalance.toFixed(2)} ETB</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedChapaTx(null)}
+              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition-colors text-xs"
+            >
+              Close Details
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* RECEIPT PREVIEW MODAL */}
       {previewItem && (
