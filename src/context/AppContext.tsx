@@ -416,25 +416,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   async function addProduct(prodData: Omit<Product, 'id' | 'createdAt'>) {
     try {
-      const res = await productsApi.create(prodData);
-      const created = res.data;
+      const imgs = Array.isArray(prodData.images) && prodData.images.length ? prodData.images : [];
+      const payload = {
+        name: prodData.name,
+        category: prodData.category,
+        retail_value: prodData.retailValue,
+        description: prodData.description ?? '',
+        images: imgs,
+        image_url: imgs[0] ?? '',
+      };
+      const res = await productsApi.create(payload);
+      const created = apiToProduct(res.data);
       setProducts(prev => [created, ...prev]);
-      addAuditLog('Created Product', created.name, `Retail value: ${Number(created.retail_value ?? created.retailValue ?? created.retailValue)} ETB`);
+      addAuditLog('Created Product', created.name, `Retail value: ${created.retailValue} ETB`);
     } catch (err: any) {
       console.error('Failed to create product', err?.message || err);
-      alert(`Failed to create product: ${err?.message || err}`);
+      throw err;
     }
   }
 
   async function updateProduct(id: string, updates: Partial<Product>) {
     try {
-      const res = await productsApi.update(id, updates);
-      const updated = res.data;
+      const imgs = Array.isArray(updates.images) && updates.images.length ? updates.images : undefined;
+      const payload: any = {};
+      if (updates.name !== undefined)        payload.name         = updates.name;
+      if (updates.category !== undefined)    payload.category     = updates.category;
+      if (updates.retailValue !== undefined) payload.retail_value = updates.retailValue;
+      if (updates.description !== undefined) payload.description  = updates.description;
+      if (imgs) {
+        payload.images    = imgs;
+        payload.image_url = imgs[0];
+      }
+      const res = await productsApi.update(id, payload);
+      const updated = apiToProduct(res.data);
       setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updated } : p));
-      addAuditLog('Updated Product', updated.name || id, `Fields updated: ${Object.keys(updates).join(', ')}`);
+      addAuditLog('Updated Product', updated.name || id, `Fields updated: ${Object.keys(payload).join(', ')}`);
     } catch (err: any) {
       console.error('Failed to update product', err?.message || err);
-      alert(`Failed to update product: ${err?.message || err}`);
+      throw err;
     }
   }
 

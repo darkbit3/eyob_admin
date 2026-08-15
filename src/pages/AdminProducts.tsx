@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Product } from '../data/mockData';
 import CountdownTimer from '../components/CountdownTimer';
-import { Package, Search, Plus, Edit2, Trash2, Link2 } from 'lucide-react';
+import { Package, Search, Plus, Edit2, Trash2, Link2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ADMIN_ROUTES } from '../utils/routes';
 
@@ -19,15 +19,15 @@ export default function AdminProducts() {
   const [viewProduct, setViewProduct] = useState<Product | null>(null);
   const [viewIndex, setViewIndex] = useState(0);
 
+  // ── Save overlay state ───────────────────────────────────────────────────
+  const [saveState, setSaveState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [saveMsg, setSaveMsg] = useState('');
+
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Electronics');
   const [retailValue, setRetailValue] = useState(25000);
   const [description, setDescription] = useState('');
-  const [images, setImages] = useState<string[]>([
-    'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=900&h=600&fit=crop',
-    'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=900&h=600&fit=crop',
-    'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=900&h=600&fit=crop',
-  ]);
+  const [images, setImages] = useState<string[]>(['']);
 
   function handleOpenCreate() {
     setEditingProduct(null);
@@ -35,11 +35,7 @@ export default function AdminProducts() {
     setCategory('Electronics');
     setRetailValue(25000);
     setDescription('');
-    setImages([
-      'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=900&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=900&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=900&h=600&fit=crop',
-    ]);
+    setImages(['']);
     setShowDrawer(true);
   }
 
@@ -49,36 +45,52 @@ export default function AdminProducts() {
     setCategory(p.category);
     setRetailValue(p.retailValue || 0);
     setDescription(p.description || '');
-    setImages(p.images ?? []);
+    setImages(p.images && p.images.length ? p.images : ['']);
     setShowDrawer(true);
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!name.trim()) return;
-    if (!images || images.length < 3) {
-      alert('Please provide at least 3 images for the product (max 8).');
+    const validImages = images.filter(img => img.trim() !== '');
+    if (validImages.length === 0) {
+      setSaveState('error');
+      setSaveMsg('Please add at least one image URL.');
+      setTimeout(() => setSaveState('idle'), 2000);
       return;
     }
 
-    if (editingProduct) {
-      updateProduct(editingProduct.id, {
-        name,
-        category,
-        retailValue: Number(retailValue),
-        description,
-        images,
-      });
-    } else {
-      addProduct({
-        name,
-        category,
-        retailValue: Number(retailValue),
-        description,
-        images,
-      });
-    }
+    setSaveState('loading');
+    setSaveMsg(editingProduct ? 'Updating product…' : 'Creating product…');
 
-    setShowDrawer(false);
+    try {
+      if (editingProduct) {
+        await updateProduct(editingProduct.id, {
+          name,
+          category,
+          retailValue: Number(retailValue),
+          description,
+          images: validImages,
+        });
+      } else {
+        await addProduct({
+          name,
+          category,
+          retailValue: Number(retailValue),
+          description,
+          images: validImages,
+        });
+      }
+      setSaveState('success');
+      setSaveMsg(editingProduct ? 'Product updated!' : 'Product created!');
+      setTimeout(() => {
+        setSaveState('idle');
+        setShowDrawer(false);
+      }, 1200);
+    } catch (err: any) {
+      setSaveState('error');
+      setSaveMsg(err?.message || 'Failed to save product.');
+      setTimeout(() => setSaveState('idle'), 2500);
+    }
   }
 
   function handleDeleteConfirmed() {
@@ -100,6 +112,28 @@ export default function AdminProducts() {
 
   return (
     <div className="space-y-6">
+
+      {/* ── Save overlay ──────────────────────────────────────────────────── */}
+      {saveState !== 'idle' && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 bg-slate-900 border border-slate-700 rounded-2xl p-8 shadow-2xl min-w-[180px]">
+            {saveState === 'loading' && (
+              <Loader2 className="w-12 h-12 text-purple-400 animate-spin" />
+            )}
+            {saveState === 'success' && (
+              <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-emerald-400" />
+              </div>
+            )}
+            {saveState === 'error' && (
+              <div className="w-12 h-12 rounded-full bg-rose-500/20 flex items-center justify-center">
+                <XCircle className="w-8 h-8 text-rose-400" />
+              </div>
+            )}
+            <p className="text-sm font-semibold text-slate-200 text-center max-w-[200px]">{saveMsg}</p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -334,7 +368,9 @@ export default function AdminProducts() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Images (min 3, max 8)</label>
+                  <label className="block text-slate-300 font-semibold mb-1">
+                    Product Images <span className="text-slate-500 font-normal">(at least 1, max 8)</span>
+                  </label>
                   <div className="space-y-2">
                     {images.map((img, idx) => (
                       <div key={idx} className="flex items-center gap-2">
@@ -344,27 +380,31 @@ export default function AdminProducts() {
                           onChange={(e) =>
                             setImages((prev) => prev.map((v, i) => (i === idx ? e.target.value : v)))
                           }
+                          placeholder="https://..."
                           className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono text-[11px]"
                         />
+                        {img.trim() && (
+                          <img src={img} alt="" className="w-8 h-8 object-cover rounded border border-slate-700 flex-shrink-0"
+                            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        )}
                         <button
-                          onClick={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
-                          disabled={images.length <= 3}
-                          className="px-2 py-1 bg-rose-600 text-white rounded disabled:opacity-40 text-xs"
+                          type="button"
+                          onClick={() => setImages((prev) => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev)}
+                          disabled={images.length <= 1}
+                          className="px-2 py-1 bg-rose-600/80 hover:bg-rose-600 text-white rounded disabled:opacity-30 text-xs transition-colors"
                         >
-                          Remove
+                          ✕
                         </button>
                       </div>
                     ))}
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => images.length < 8 && setImages((prev) => [...prev, ''])}
-                        disabled={images.length >= 8}
-                        className="px-3 py-2 bg-purple-600 text-white rounded disabled:opacity-40 text-xs"
-                      >
-                        Add Image
-                      </button>
-                      <span className="text-[11px] text-slate-400">{images.length} / 8</span>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => images.length < 8 && setImages((prev) => [...prev, ''])}
+                      disabled={images.length >= 8}
+                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg disabled:opacity-40 text-xs transition-colors"
+                    >
+                      + Add Image URL ({images.length}/8)
+                    </button>
                   </div>
                 </div>
               </div>
@@ -374,8 +414,13 @@ export default function AdminProducts() {
               <button onClick={() => setShowDrawer(false)} className="px-4 py-2 bg-slate-800 text-slate-200 rounded text-xs">
                 Cancel
               </button>
-              <button onClick={handleSave} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded text-xs font-semibold">
-                Save Product
+              <button
+                onClick={handleSave}
+                disabled={saveState === 'loading'}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded text-xs font-semibold flex items-center gap-1.5"
+              >
+                {saveState === 'loading' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {editingProduct ? 'Update Product' : 'Save Product'}
               </button>
             </div>
           </div>
