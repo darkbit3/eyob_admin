@@ -379,10 +379,12 @@ export default function AdminWallet() {
               className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none"
             >
               <option value="all">All Types</option>
+              <option value="bid_fee_paid">🔓 Bid Unlocked (Entry Fee)</option>
               <option value="credit_purchase">Credit Purchases</option>
               <option value="bid_placed">Bid Debits</option>
               <option value="winning_reward">Winning Rewards</option>
-              <option value="manual_adjustment">Admin Adjustments</option>
+              <option value="manual_adjustment">Admin Manual Deposits</option>
+              <option value="manual_withdrawal">Admin Manual Withdrawals</option>
               <option value="refund">Refunds</option>
             </select>
 
@@ -500,6 +502,21 @@ export default function AdminWallet() {
                   : 'bg-slate-700/50 text-slate-400 border-slate-600/30';
 
                 const isChapaTx = methodLabel === 'Chapa' || (t.description || '').toLowerCase().includes('chapa');
+                const isUnlockTx = t.type === 'bid_fee_paid' || (t.description || '').toLowerCase().includes('unlock entry fee');
+
+                const typeBadgeLabel = isUnlockTx ? 'BID UNLOCKED'
+                  : t.type === 'manual_withdrawal' ? 'MANUAL WITHDRAWAL'
+                  : t.type === 'manual_adjustment' ? 'MANUAL DEPOSIT'
+                  : t.type.replace(/_/g, ' ').toUpperCase();
+
+                const typeBadgeColor = isUnlockTx
+                  ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                  : t.type === 'manual_withdrawal'
+                  ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                  : t.type === 'manual_adjustment'
+                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                  : 'bg-slate-800 text-purple-300 border-slate-700';
+
                 return (
                 <tr
                   key={t.id}
@@ -513,8 +530,8 @@ export default function AdminWallet() {
                     </div>
                   </td>
                   <td className="p-3">
-                    <span className="bg-slate-800 text-purple-300 text-[10px] font-mono px-2 py-0.5 rounded border border-slate-700">
-                      {t.type.replace(/_/g, ' ').toUpperCase()}
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${typeBadgeColor}`}>
+                      {typeBadgeLabel}
                     </span>
                   </td>
                   <td className="p-3">

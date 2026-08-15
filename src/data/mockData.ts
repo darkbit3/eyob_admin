@@ -69,7 +69,7 @@ export interface Transaction {
   id: string;
   userId: string;
   userName: string;
-  type: 'credit_purchase' | 'bid_placed' | 'refund' | 'winning_reward' | 'manual_adjustment';
+  type: 'credit_purchase' | 'bid_placed' | 'refund' | 'winning_reward' | 'manual_adjustment' | 'bid_fee_paid' | 'manual_withdrawal' | string;
   amount: number;
   description: string;
   timestamp: string;
