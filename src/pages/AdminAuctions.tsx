@@ -5,7 +5,7 @@ import { bidsApi, auctionsApi } from '../utils/api';
 import { useLocation } from 'react-router-dom';
 import {
   Gavel, Search, Plus, Edit2, PauseCircle, PlayCircle, XCircle, ShieldAlert,
-  ChevronDown, ChevronUp, Users, Trophy, CheckCircle, Loader2, RefreshCw, Package
+  ChevronDown, ChevronUp, Users, Trophy, CheckCircle, Loader2, RefreshCw, Package, CheckSquare, Square
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -33,6 +33,13 @@ export default function AdminAuctions() {
 
   const [showDrawer, setShowDrawer] = useState(false);
   const [editingAuction, setEditingAuction] = useState<Auction | null>(null);
+
+  // ── Multi-select state ───────────────────────────────────────────────────
+  const [selectedAuctionIds, setSelectedAuctionIds] = useState<string[]>([]);
+
+  // ── Feedback Overlay State ───────────────────────────────────────────────
+  const [actionState, setActionState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [actionMsg, setActionMsg] = useState('');
 
   // ── Expanded bid rows ─────────────────────────────────────────────────────
   const [expandedAuctionId, setExpandedAuctionId] = useState<string | null>(null);
@@ -194,6 +201,15 @@ export default function AdminAuctions() {
   async function handleSave(asDraft = false) {
     if (!title.trim()) return;
 
+    setActionState('loading');
+    setActionMsg(
+      editingAuction
+        ? 'Updating auction parameters...'
+        : asDraft
+        ? 'Saving auction as draft...'
+        : 'Publishing auction live...'
+    );
+
     const payload = {
       product_id: productId || null,
       title,
@@ -241,23 +257,46 @@ export default function AdminAuctions() {
           status: payload.status as AuctionStatus,
         });
       }
-      setShowDrawer(false);
-    } catch (err) {
-      console.error(err);
+
+      setActionState('success');
+      setActionMsg(
+        editingAuction
+          ? 'Auction updated successfully!'
+          : asDraft
+          ? 'Auction saved as draft!'
+          : 'Auction published live successfully!'
+      );
+      setTimeout(() => {
+        setActionState('idle');
+        setShowDrawer(false);
+      }, 1400);
+    } catch (err: any) {
+      setActionState('error');
+      setActionMsg(err?.message || 'Failed to save auction.');
+      setTimeout(() => setActionState('idle'), 2500);
     }
   }
 
   async function executeConfirmedAction() {
     if (!confirmActionModal) return;
     const { type, auction } = confirmActionModal;
+
+    setActionState('loading');
+    setActionMsg(`Processing ${type} action on "${auction.title}"...`);
+    setConfirmActionModal(null);
+
     try {
       if (type === 'pause') await pauseAuction(auction.id);
       if (type === 'resume') await resumeAuction(auction.id);
       if (type === 'cancel') await cancelAuction(auction.id);
-    } catch (error) {
-      console.error('Auction action failed', error);
+
+      setActionState('success');
+      setActionMsg(`Auction ${type}d successfully!`);
+    } catch (error: any) {
+      setActionState('error');
+      setActionMsg(error?.message || `Failed to ${type} auction.`);
     } finally {
-      setConfirmActionModal(null);
+      setTimeout(() => setActionState('idle'), 1800);
     }
   }
 
@@ -271,6 +310,104 @@ export default function AdminAuctions() {
 
   const categories = Array.from(new Set(auctions.map(a => a.category)));
   const productOptions = [{ id: '', name: 'None (standalone auction)' }, ...products.map(p => ({ id: p.id, name: p.name }))];
+
+  // ── Multi-select Helpers & Batch Actions ───────────────────────────────────
+  const allFilteredSelected = filtered.length > 0 && filtered.every(a => selectedAuctionIds.includes(a.id));
+
+  function handleSelectAll() {
+    if (allFilteredSelected) {
+      setSelectedAuctionIds(prev => prev.filter(id => !filtered.some(a => a.id === id)));
+    } else {
+      const newIds = Array.from(new Set([...selectedAuctionIds, ...filtered.map(a => a.id)]));
+      setSelectedAuctionIds(newIds);
+    }
+  }
+
+  function toggleSelectAuction(id: string) {
+    setSelectedAuctionIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  }
+
+  async function handleBatchPublishSelected() {
+    if (selectedAuctionIds.length === 0) return;
+    setActionState('loading');
+    setActionMsg(`Publishing ${selectedAuctionIds.length} selected auction(s)...`);
+
+    try {
+      for (const id of selectedAuctionIds) {
+        await updateAuction(id, { status: 'active' });
+      }
+      setActionState('success');
+      setActionMsg(`Successfully published ${selectedAuctionIds.length} selected auction(s)!`);
+      setSelectedAuctionIds([]);
+    } catch (err: any) {
+      setActionState('error');
+      setActionMsg(err?.message || 'Failed to publish selected auctions.');
+    } finally {
+      setTimeout(() => setActionState('idle'), 2000);
+    }
+  }
+
+  async function handleBatchPauseSelected() {
+    if (selectedAuctionIds.length === 0) return;
+    setActionState('loading');
+    setActionMsg(`Pausing ${selectedAuctionIds.length} selected auction(s)...`);
+
+    try {
+      for (const id of selectedAuctionIds) {
+        await pauseAuction(id);
+      }
+      setActionState('success');
+      setActionMsg(`Successfully paused ${selectedAuctionIds.length} selected auction(s)!`);
+      setSelectedAuctionIds([]);
+    } catch (err: any) {
+      setActionState('error');
+      setActionMsg(err?.message || 'Failed to pause selected auctions.');
+    } finally {
+      setTimeout(() => setActionState('idle'), 2000);
+    }
+  }
+
+  async function handleBatchResumeSelected() {
+    if (selectedAuctionIds.length === 0) return;
+    setActionState('loading');
+    setActionMsg(`Resuming ${selectedAuctionIds.length} selected auction(s)...`);
+
+    try {
+      for (const id of selectedAuctionIds) {
+        await resumeAuction(id);
+      }
+      setActionState('success');
+      setActionMsg(`Successfully resumed ${selectedAuctionIds.length} selected auction(s)!`);
+      setSelectedAuctionIds([]);
+    } catch (err: any) {
+      setActionState('error');
+      setActionMsg(err?.message || 'Failed to resume selected auctions.');
+    } finally {
+      setTimeout(() => setActionState('idle'), 2000);
+    }
+  }
+
+  async function handleBatchCancelSelected() {
+    if (selectedAuctionIds.length === 0) return;
+    setActionState('loading');
+    setActionMsg(`Cancelling ${selectedAuctionIds.length} selected auction(s)...`);
+
+    try {
+      for (const id of selectedAuctionIds) {
+        await cancelAuction(id);
+      }
+      setActionState('success');
+      setActionMsg(`Successfully cancelled ${selectedAuctionIds.length} selected auction(s)!`);
+      setSelectedAuctionIds([]);
+    } catch (err: any) {
+      setActionState('error');
+      setActionMsg(err?.message || 'Failed to cancel selected auctions.');
+    } finally {
+      setTimeout(() => setActionState('idle'), 2000);
+    }
+  }
 
   const statusBadge = (s: AuctionStatus) => {
     switch (s) {
@@ -289,6 +426,42 @@ export default function AdminAuctions() {
 
   return (
     <div className="space-y-6">
+
+      {/* ── Status Feedback Overlay (Spinner, Right Tick Sign, X Cross Sign & Message Display) ── */}
+      {actionState !== 'idle' && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 backdrop-blur-md transition-all">
+          <div className="flex flex-col items-center justify-center gap-4 bg-slate-900 border border-slate-700/80 rounded-3xl p-8 shadow-2xl min-w-[280px] max-w-sm text-center">
+            {/* Loading Spinner */}
+            {actionState === 'loading' && (
+              <div className="relative flex items-center justify-center">
+                <Loader2 className="w-14 h-14 text-purple-400 animate-spin" />
+              </div>
+            )}
+            {/* Right Sign (Success Tick) */}
+            {actionState === 'success' && (
+              <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shadow-lg shadow-emerald-950/50 animate-bounce">
+                <CheckCircle className="w-10 h-10 text-emerald-400" />
+              </div>
+            )}
+            {/* X Sign (Error Cross) */}
+            {actionState === 'error' && (
+              <div className="w-16 h-16 rounded-full bg-rose-500/20 border border-rose-500/40 flex items-center justify-center shadow-lg shadow-rose-950/50">
+                <XCircle className="w-10 h-10 text-rose-400" />
+              </div>
+            )}
+            {/* Message display under the sign */}
+            <div className="space-y-1">
+              <h4 className="text-base font-bold text-white uppercase tracking-wider">
+                {actionState === 'loading' ? 'Processing Action' : actionState === 'success' ? 'Success' : 'Error Occurred'}
+              </h4>
+              <p className="text-xs font-semibold text-slate-300 max-w-[240px] leading-relaxed">
+                {actionMsg}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -322,6 +495,47 @@ export default function AdminAuctions() {
           </button>
         </div>
       </div>
+
+      {/* Sticky Multi-select Action Bar */}
+      {selectedAuctionIds.length > 0 && (
+        <div className="p-4 bg-purple-950/60 border border-purple-500/40 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-3 shadow-xl animate-fade-in">
+          <div className="flex items-center gap-2 text-xs font-bold text-purple-200">
+            <CheckSquare className="w-4 h-4 text-purple-400" />
+            <span>{selectedAuctionIds.length} Auction(s) Selected</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <button
+              onClick={handleBatchPublishSelected}
+              className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all shadow-md"
+            >
+              <PlayCircle className="w-3.5 h-3.5" />
+              Publish Selected ({selectedAuctionIds.length})
+            </button>
+            <button
+              onClick={handleBatchPauseSelected}
+              className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl transition-all shadow-md"
+            >
+              <PauseCircle className="w-3.5 h-3.5" />
+              Pause Selected ({selectedAuctionIds.length})
+            </button>
+            <button
+              onClick={handleBatchResumeSelected}
+              className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all shadow-md"
+            >
+              <PlayCircle className="w-3.5 h-3.5" />
+              Resume Selected ({selectedAuctionIds.length})
+            </button>
+            <button
+              onClick={handleBatchCancelSelected}
+              className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all shadow-md"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              Cancel Selected ({selectedAuctionIds.length})
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filter Bar */}
       <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex flex-col md:flex-row items-center justify-between gap-3">
@@ -366,6 +580,15 @@ export default function AdminAuctions() {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-950/60 border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
               <tr>
+                <th className="p-4 w-10">
+                  <button onClick={handleSelectAll} className="text-slate-400 hover:text-white transition-colors">
+                    {allFilteredSelected ? (
+                      <CheckSquare className="w-4 h-4 text-purple-400" />
+                    ) : (
+                      <Square className="w-4 h-4 text-slate-500" />
+                    )}
+                  </button>
+                </th>
                 <th className="p-4">Auction Item</th>
                 <th className="p-4">Status</th>
                 <th className="p-4">Retail Value</th>
@@ -377,6 +600,7 @@ export default function AdminAuctions() {
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
               {filtered.map(a => {
+                const isSelected = selectedAuctionIds.includes(a.id);
                 const isExpanded = expandedAuctionId === a.id;
 
                 // Compute stats from fetched bid data when expanded
@@ -395,8 +619,25 @@ export default function AdminAuctions() {
                     <tr
                       key={a.id}
                       onClick={() => toggleBidders(a.id)}
-                      className={`transition-colors cursor-pointer select-none ${isExpanded ? 'bg-slate-800/60 border-l-2 border-l-purple-500' : 'hover:bg-slate-800/40'}`}
+                      className={`transition-colors cursor-pointer select-none ${
+                        isSelected
+                          ? 'bg-purple-950/40 border-l-2 border-l-purple-500'
+                          : isExpanded
+                          ? 'bg-slate-800/60 border-l-2 border-l-purple-500'
+                          : 'hover:bg-slate-800/40'
+                      }`}
                     >
+                      {/* Checkbox */}
+                      <td className="p-4" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => toggleSelectAuction(a.id)} className="text-slate-400 hover:text-purple-400">
+                          {isSelected ? (
+                            <CheckSquare className="w-4 h-4 text-purple-400" />
+                          ) : (
+                            <Square className="w-4 h-4 text-slate-600" />
+                          )}
+                        </button>
+                      </td>
+
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <img src={a.image} alt={a.title} className="w-10 h-10 object-cover rounded-lg flex-shrink-0" />
@@ -469,7 +710,7 @@ export default function AdminAuctions() {
                     {/* ── Expanded bidders panel ────────────────────────────── */}
                     {isExpanded && (
                       <tr key={`${a.id}-bids`} className="bg-slate-950/60">
-                        <td colSpan={7} className="px-6 pb-6 pt-2">
+                        <td colSpan={8} className="px-6 pb-6 pt-2">
                           {/* Summary stats */}
                           <div className="flex items-center gap-6 mb-4 text-xs font-semibold text-slate-400">
                             <span className="flex items-center gap-1.5">
@@ -737,7 +978,7 @@ export default function AdminAuctions() {
                   {imageUrl && (
                     <div className="mt-2 p-2 bg-slate-950 border border-slate-800 rounded-lg flex items-center gap-3">
                       <img src={imageUrl} alt="Preview" className="w-12 h-12 object-cover rounded-md" />
-                      <span className="text-[10px] text-slate-400">Mock thumbnail preview</span>
+                      <span className="text-[10px] text-slate-400 font-mono">Mock thumbnail preview</span>
                     </div>
                   )}
                   {selectedProduct && (
@@ -768,17 +1009,33 @@ export default function AdminAuctions() {
               </div>
             </div>
 
+            {/* Inline drawer status display */}
+            {actionState !== 'idle' && (
+              <div className="mt-4 p-3 rounded-xl border flex items-center gap-2.5 text-xs font-semibold bg-slate-950/80 border-slate-800">
+                {actionState === 'loading' && <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />}
+                {actionState === 'success' && <CheckCircle className="w-4 h-4 text-emerald-400" />}
+                {actionState === 'error' && <XCircle className="w-4 h-4 text-rose-400" />}
+                <span className={actionState === 'error' ? 'text-rose-400' : actionState === 'success' ? 'text-emerald-400' : 'text-slate-300'}>
+                  {actionMsg}
+                </span>
+              </div>
+            )}
+
             <div className="border-t border-slate-800 pt-4 mt-6 flex items-center justify-end gap-2">
               <button
                 onClick={() => handleSave(true)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg"
+                disabled={actionState === 'loading'}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg flex items-center gap-1.5"
               >
+                {actionState === 'loading' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Save as Draft
               </button>
               <button
                 onClick={() => handleSave(false)}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-purple-900/40"
+                disabled={actionState === 'loading'}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-lg shadow-purple-900/40 flex items-center gap-1.5"
               >
+                {actionState === 'loading' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Publish Auction
               </button>
             </div>

@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Product } from '../data/mockData';
 import CountdownTimer from '../components/CountdownTimer';
-import { Package, Search, Plus, Edit2, Trash2, Link2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Package, Search, Plus, Edit2, Trash2, Link2, CheckCircle, XCircle, Loader2, CheckSquare, Square, Gavel } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ADMIN_ROUTES } from '../utils/routes';
 
 export default function AdminProducts() {
-  const { auctions, products, addProduct, updateProduct, deleteProduct } = useApp();
+  const { auctions, products, addProduct, updateProduct, deleteProduct, createAuction } = useApp();
   const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,7 +19,10 @@ export default function AdminProducts() {
   const [viewProduct, setViewProduct] = useState<Product | null>(null);
   const [viewIndex, setViewIndex] = useState(0);
 
-  // ── Save overlay state ───────────────────────────────────────────────────
+  // ── Multi-select state ───────────────────────────────────────────────────
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+
+  // ── Save / Action status overlay state ───────────────────────────────────
   const [saveState, setSaveState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [saveMsg, setSaveMsg] = useState('');
 
@@ -60,7 +63,7 @@ export default function AdminProducts() {
     }
 
     setSaveState('loading');
-    setSaveMsg(editingProduct ? 'Updating product…' : 'Creating product…');
+    setSaveMsg(editingProduct ? 'Updating product details...' : 'Creating new product...');
 
     try {
       if (editingProduct) {
@@ -81,11 +84,11 @@ export default function AdminProducts() {
         });
       }
       setSaveState('success');
-      setSaveMsg(editingProduct ? 'Product updated!' : 'Product created!');
+      setSaveMsg(editingProduct ? 'Product updated successfully!' : 'Product created successfully!');
       setTimeout(() => {
         setSaveState('idle');
         setShowDrawer(false);
-      }, 1200);
+      }, 1400);
     } catch (err: any) {
       setSaveState('error');
       setSaveMsg(err?.message || 'Failed to save product.');
@@ -93,10 +96,20 @@ export default function AdminProducts() {
     }
   }
 
-  function handleDeleteConfirmed() {
-    if (deletingProduct) {
-      deleteProduct(deletingProduct.id);
+  async function handleDeleteConfirmed() {
+    if (!deletingProduct) return;
+    setSaveState('loading');
+    setSaveMsg(`Deleting product ${deletingProduct.name}...`);
+    try {
+      await deleteProduct(deletingProduct.id);
       setDeletingProduct(null);
+      setSaveState('success');
+      setSaveMsg('Product deleted successfully!');
+    } catch (err: any) {
+      setSaveState('error');
+      setSaveMsg(err?.message || 'Failed to delete product.');
+    } finally {
+      setTimeout(() => setSaveState('idle'), 1500);
     }
   }
 
@@ -110,30 +123,125 @@ export default function AdminProducts() {
 
   const categories = Array.from(new Set(products.map((p) => p.category)));
 
+  // Multi-select helpers
+  const allFilteredSelected = filtered.length > 0 && filtered.every(p => selectedProductIds.includes(p.id));
+  
+  function handleSelectAll() {
+    if (allFilteredSelected) {
+      setSelectedProductIds(prev => prev.filter(id => !filtered.some(p => p.id === id)));
+    } else {
+      const newIds = Array.from(new Set([...selectedProductIds, ...filtered.map(p => p.id)]));
+      setSelectedProductIds(newIds);
+    }
+  }
+
+  function toggleSelectProduct(id: string) {
+    setSelectedProductIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  }
+
+  // ── Create Auctions for Selected Products ──────────────────────────────────
+  async function handleCreateSelectedAuctions() {
+    if (selectedProductIds.length === 0) return;
+    const selectedProds = products.filter(p => selectedProductIds.includes(p.id));
+    
+    setSaveState('loading');
+    setSaveMsg(`Creating auctions for ${selectedProds.length} selected product(s)...`);
+
+    try {
+      const now = new Date();
+      const end = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000);
+      const startIso = now.toISOString().substring(0, 16);
+      const endIso = end.toISOString().substring(0, 16);
+
+      for (const prod of selectedProds) {
+        await createAuction({
+          productId: prod.id,
+          title: prod.name,
+          description: prod.description || `Auction for ${prod.name}`,
+          category: prod.category,
+          image: (prod.images && prod.images[0]) || 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=900&h=600&fit=crop',
+          retailValue: prod.retailValue || 1000,
+          bidPerCost: 100,
+          minBid: 1,
+          maxBid: 500,
+          startTime: startIso,
+          endTime: endIso,
+          status: 'active',
+        });
+      }
+
+      setSaveState('success');
+      setSaveMsg(`Successfully created ${selectedProds.length} auction(s) for selected product(s)!`);
+      setSelectedProductIds([]);
+    } catch (err: any) {
+      setSaveState('error');
+      setSaveMsg(err?.message || 'Failed to create auctions for selected products.');
+    } finally {
+      setTimeout(() => setSaveState('idle'), 2000);
+    }
+  }
+
+  // ── Batch Delete Selected Products ─────────────────────────────────────────
+  async function handleDeleteSelectedProducts() {
+    if (selectedProductIds.length === 0) return;
+    setSaveState('loading');
+    setSaveMsg(`Deleting ${selectedProductIds.length} selected product(s)...`);
+
+    try {
+      for (const id of selectedProductIds) {
+        await deleteProduct(id);
+      }
+      setSaveState('success');
+      setSaveMsg(`${selectedProductIds.length} Product(s) deleted successfully!`);
+      setSelectedProductIds([]);
+    } catch (err: any) {
+      setSaveState('error');
+      setSaveMsg(err?.message || 'Failed to delete selected products.');
+    } finally {
+      setTimeout(() => setSaveState('idle'), 2000);
+    }
+  }
+
   return (
     <div className="space-y-6">
 
-      {/* ── Save overlay ──────────────────────────────────────────────────── */}
+      {/* ── Status Feedback Overlay (Spinner, Right Tick Sign, X Cross Sign & Message Display) ── */}
       {saveState !== 'idle' && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-4 bg-slate-900 border border-slate-700 rounded-2xl p-8 shadow-2xl min-w-[180px]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 backdrop-blur-md transition-all">
+          <div className="flex flex-col items-center justify-center gap-4 bg-slate-900 border border-slate-700/80 rounded-3xl p-8 shadow-2xl min-w-[280px] max-w-sm text-center">
+            {/* Loading Spinner */}
             {saveState === 'loading' && (
-              <Loader2 className="w-12 h-12 text-purple-400 animate-spin" />
+              <div className="relative flex items-center justify-center">
+                <Loader2 className="w-14 h-14 text-purple-400 animate-spin" />
+              </div>
             )}
+            {/* Right Sign (Success Tick) */}
             {saveState === 'success' && (
-              <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                <CheckCircle className="w-8 h-8 text-emerald-400" />
+              <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shadow-lg shadow-emerald-950/50 animate-bounce">
+                <CheckCircle className="w-10 h-10 text-emerald-400" />
               </div>
             )}
+            {/* X Sign (Error Cross) */}
             {saveState === 'error' && (
-              <div className="w-12 h-12 rounded-full bg-rose-500/20 flex items-center justify-center">
-                <XCircle className="w-8 h-8 text-rose-400" />
+              <div className="w-16 h-16 rounded-full bg-rose-500/20 border border-rose-500/40 flex items-center justify-center shadow-lg shadow-rose-950/50">
+                <XCircle className="w-10 h-10 text-rose-400" />
               </div>
             )}
-            <p className="text-sm font-semibold text-slate-200 text-center max-w-[200px]">{saveMsg}</p>
+            {/* Message display under the sign */}
+            <div className="space-y-1">
+              <h4 className="text-base font-bold text-white uppercase tracking-wider">
+                {saveState === 'loading' ? 'Processing Action' : saveState === 'success' ? 'Success' : 'Error Occurred'}
+              </h4>
+              <p className="text-xs font-semibold text-slate-300 max-w-[240px] leading-relaxed">
+                {saveMsg}
+              </p>
+            </div>
           </div>
         </div>
       )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -151,6 +259,33 @@ export default function AdminProducts() {
           <Plus className="w-4 h-4" /> Add Product Entry
         </button>
       </div>
+
+      {/* Batch Selection Action Bar */}
+      {selectedProductIds.length > 0 && (
+        <div className="p-4 bg-purple-950/60 border border-purple-500/40 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl animate-fade-in">
+          <div className="flex items-center gap-2 text-xs font-bold text-purple-200">
+            <CheckSquare className="w-4 h-4 text-purple-400" />
+            <span>{selectedProductIds.length} Product(s) Selected</span>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={handleCreateSelectedAuctions}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all"
+            >
+              <Gavel className="w-3.5 h-3.5" />
+              Create Auctions for Selected ({selectedProductIds.length})
+            </button>
+            <button
+              onClick={handleDeleteSelectedProducts}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-md transition-all"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Selected ({selectedProductIds.length})
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filter Bar */}
       <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -184,6 +319,15 @@ export default function AdminProducts() {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-950/60 border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
               <tr>
+                <th className="p-4 w-10">
+                  <button onClick={handleSelectAll} className="text-slate-400 hover:text-white transition-colors">
+                    {allFilteredSelected ? (
+                      <CheckSquare className="w-4 h-4 text-purple-400" />
+                    ) : (
+                      <Square className="w-4 h-4 text-slate-500" />
+                    )}
+                  </button>
+                </th>
                 <th className="p-4">Product Details</th>
                 <th className="p-4">Category</th>
                 <th className="p-4">Retail Value</th>
@@ -195,9 +339,9 @@ export default function AdminProducts() {
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
               {filtered.map((p) => {
+                const isSelected = selectedProductIds.includes(p.id);
                 const isLinked = !!p.linkedAuctionId && !!p.linkedAuctionStatus;
                 const auctionEndTime = p.linkedAuctionEndTime ?? auctions.find(a => a.id === p.linkedAuctionId)?.endTime;
-                const auctionStartTime = p.linkedAuctionStartTime ?? auctions.find(a => a.id === p.linkedAuctionId)?.startTime;
                 const auctionStatus = p.linkedAuctionStatus;
                 const createdDate = p.createdAt
                   ? new Date(p.createdAt).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: '2-digit' })
@@ -206,9 +350,20 @@ export default function AdminProducts() {
                 return (
                   <tr
                     key={p.id}
-                    className="hover:bg-slate-800/40 transition-colors cursor-pointer"
+                    className={`transition-colors cursor-pointer ${isSelected ? 'bg-purple-950/30' : 'hover:bg-slate-800/40'}`}
                     onClick={() => { setViewProduct(p); setViewIndex(0); }}
                   >
+                    {/* Multi-select Checkbox */}
+                    <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                      <button onClick={() => toggleSelectProduct(p.id)} className="text-slate-400 hover:text-purple-400">
+                        {isSelected ? (
+                          <CheckSquare className="w-4 h-4 text-purple-400" />
+                        ) : (
+                          <Square className="w-4 h-4 text-slate-600" />
+                        )}
+                      </button>
+                    </td>
+
                     {/* Product Details */}
                     <td className="p-4">
                       <div className="flex items-center gap-3">
@@ -231,12 +386,12 @@ export default function AdminProducts() {
                       </span>
                     </td>
 
-                    {/* Retail Value — from backend */}
+                    {/* Retail Value */}
                     <td className="p-4 font-mono font-bold text-slate-200">
                       {(typeof p.retailValue === 'number' ? p.retailValue : 0).toLocaleString()} ETB
                     </td>
 
-                    {/* Linked Auction Status — or "Create Auction" button */}
+                    {/* Linked Auction Status */}
                     <td className="p-4">
                       {isLinked ? (
                         <span
@@ -268,7 +423,7 @@ export default function AdminProducts() {
                       )}
                     </td>
 
-                    {/* Auction Countdown — only if linked */}
+                    {/* Auction Countdown */}
                     <td className="p-4">
                       {isLinked && auctionEndTime && auctionStatus ? (
                         <CountdownTimer endTime={auctionEndTime} status={auctionStatus} />
@@ -277,7 +432,7 @@ export default function AdminProducts() {
                       )}
                     </td>
 
-                    {/* Created Date — from DB */}
+                    {/* Created Date */}
                     <td className="p-4 text-slate-400 font-mono text-[11px]">{createdDate}</td>
 
                     {/* Actions */}
@@ -411,6 +566,18 @@ export default function AdminProducts() {
                 </div>
               </div>
             </div>
+
+            {/* Inline drawer status display */}
+            {saveState !== 'idle' && (
+              <div className="mt-4 p-3 rounded-xl border flex items-center gap-2.5 text-xs font-semibold bg-slate-950/80 border-slate-800">
+                {saveState === 'loading' && <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />}
+                {saveState === 'success' && <CheckCircle className="w-4 h-4 text-emerald-400" />}
+                {saveState === 'error' && <XCircle className="w-4 h-4 text-rose-400" />}
+                <span className={saveState === 'error' ? 'text-rose-400' : saveState === 'success' ? 'text-emerald-400' : 'text-slate-300'}>
+                  {saveMsg}
+                </span>
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800 mt-4">
               <button onClick={() => setShowDrawer(false)} className="px-4 py-2 bg-slate-800 text-slate-200 rounded text-xs">
