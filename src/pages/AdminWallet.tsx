@@ -3,8 +3,8 @@ import { useApp } from '../context/AppContext';
 import { usersApi, walletApi } from '../utils/api';
 import { PaymentQueueItem } from '../data/mockData';
 import {
-  Wallet, Search, CheckCircle2, XCircle, PlusCircle,
-  Image as ImageIcon, CreditCard
+  Wallet, Search, CheckCircle2, XCircle, PlusCircle, MinusCircle,
+  Image as ImageIcon, CreditCard, Loader2
 } from 'lucide-react';
 
 export default function AdminWallet() {
@@ -24,13 +24,16 @@ export default function AdminWallet() {
   const [previewItem, setPreviewItem] = useState<PaymentQueueItem | null>(null);
 
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
+  const [adjustmentMode, setAdjustmentMode] = useState<'deposit' | 'withdraw'>('deposit');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(users[1]?.id || users[0]?.id || '');
   const [adjustmentAmount, setAdjustmentAmount] = useState(500);
   const [adjustmentType, setAdjustmentType] = useState<'credit' | 'wallet'>('wallet');
-  const [adjustmentReason, setAdjustmentReason] = useState('Promotional bonus deposit');
+  const [adjustmentReason, setAdjustmentReason] = useState('Admin wallet deposit');
   const [modalUserSearch, setModalUserSearch] = useState('');
   const [isModalUserDropdownOpen, setIsModalUserDropdownOpen] = useState(false);
+  const [adjustState, setAdjustState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [adjustMsg, setAdjustMsg] = useState('');
 
   const selectedUserObj = users.find(u => u.id === selectedUserId) || users[0];
 
@@ -40,10 +43,56 @@ export default function AdminWallet() {
     }
   }, [selectedUserId]);
 
-  function handleManualAdjustSubmit() {
-    if (!selectedUserId || !adjustmentAmount) return;
-    adjustUserWallet(selectedUserId, Number(adjustmentAmount), adjustmentReason, adjustmentType === 'credit');
-    setShowAdjustmentModal(false);
+  function openAdjustmentModal(mode: 'deposit' | 'withdraw', targetUserId?: string) {
+    const uid = targetUserId || selectedUserId || users[0]?.id || '';
+    setSelectedUserId(uid);
+    const u = users.find(usr => usr.id === uid) || users[0];
+    if (u) setModalUserSearch(`${u.name} (${u.phone || u.email})`);
+    setIsModalUserDropdownOpen(false);
+    setAdjustmentMode(mode);
+    setAdjustmentAmount(500);
+    setAdjustmentReason(mode === 'withdraw' ? 'Admin wallet withdrawal' : 'Admin wallet deposit');
+    setAdjustState('idle');
+    setAdjustMsg('');
+    setShowAdjustmentModal(true);
+  }
+
+  async function handleManualAdjustSubmit() {
+    const amt = Number(adjustmentAmount);
+    if (!selectedUserId) {
+      setAdjustState('error');
+      setAdjustMsg('Please select a user first.');
+      return;
+    }
+    if (isNaN(amt) || amt <= 0) {
+      setAdjustState('error');
+      setAdjustMsg('Amount must be a positive number greater than 0.');
+      return;
+    }
+
+    const userBal = Number(selectedUserObj?.walletBalance || 0);
+    if (adjustmentMode === 'withdraw' && amt > userBal) {
+      setAdjustState('error');
+      setAdjustMsg(`Insufficient user balance (${userBal} ETB available). Cannot withdraw ${amt} ETB.`);
+      return;
+    }
+
+    setAdjustState('loading');
+    setAdjustMsg(adjustmentMode === 'withdraw' ? 'Processing wallet withdrawal...' : 'Processing wallet deposit...');
+    try {
+      const finalAmt = adjustmentMode === 'withdraw' ? -amt : amt;
+      await adjustUserWallet(selectedUserId, finalAmt, adjustmentReason, false);
+      setAdjustState('success');
+      setAdjustMsg(`✓ ${adjustmentMode === 'withdraw' ? 'Withdrawal' : 'Deposit'} processed successfully! Admin balance updated.`);
+      setTimeout(() => {
+        setShowAdjustmentModal(false);
+        setAdjustState('idle');
+        setAdjustMsg('');
+      }, 1400);
+    } catch (err: any) {
+      setAdjustState('error');
+      setAdjustMsg(err?.message || `✗ Failed to process ${adjustmentMode}.`);
+    }
   }
 
   // Keep selectedUser in sync with users array updates (so balance updates show immediately)
@@ -85,17 +134,20 @@ export default function AdminWallet() {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            const u = users.find(usr => usr.id === selectedUserId) || users[0];
-            if (u) setModalUserSearch(`${u.name} (${u.phone || u.email})`);
-            setIsModalUserDropdownOpen(false);
-            setShowAdjustmentModal(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-purple-900/40 transition-all"
-        >
-          <PlusCircle className="w-4 h-4" /> Manual Wallet Adjustment
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => openAdjustmentModal('deposit')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-emerald-900/40 transition-all"
+          >
+            <PlusCircle className="w-4 h-4" /> Manual Deposit
+          </button>
+          <button
+            onClick={() => openAdjustmentModal('withdraw')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-rose-900/40 transition-all"
+          >
+            <MinusCircle className="w-4 h-4" /> Manual Withdrawal
+          </button>
+        </div>
       </div>
 
       {/* PAYMENT VERIFICATION QUEUE CARD */}
@@ -330,29 +382,13 @@ export default function AdminWallet() {
                   {isRefreshing ? 'Refreshing…' : 'Refresh'}
                 </button>
                 <button
-                  onClick={() => {
-                    setSelectedUserId(selectedUser.id);
-                    setModalUserSearch(`${selectedUser.name} (${selectedUser.phone || selectedUser.email})`);
-                    setIsModalUserDropdownOpen(false);
-                    setAdjustmentType('wallet');
-                    setAdjustmentAmount(500);
-                    setAdjustmentReason('Admin deposit');
-                    setShowAdjustmentModal(true);
-                  }}
+                  onClick={() => openAdjustmentModal('deposit', selectedUser.id)}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg"
                 >
                   Deposit
                 </button>
                 <button
-                  onClick={() => {
-                    setSelectedUserId(selectedUser.id);
-                    setModalUserSearch(`${selectedUser.name} (${selectedUser.phone || selectedUser.email})`);
-                    setIsModalUserDropdownOpen(false);
-                    setAdjustmentType('wallet');
-                    setAdjustmentAmount(-500);
-                    setAdjustmentReason('Admin withdrawal');
-                    setShowAdjustmentModal(true);
-                  }}
+                  onClick={() => openAdjustmentModal('withdraw', selectedUser.id)}
                   className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-lg"
                 >
                   Withdraw
@@ -485,7 +521,11 @@ export default function AdminWallet() {
           >
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <PlusCircle className="w-5 h-5 text-purple-400" /> Manual Wallet Adjustment
+                {adjustmentMode === 'deposit' ? (
+                  <><PlusCircle className="w-5 h-5 text-emerald-400" /> Manual Wallet Deposit</>
+                ) : (
+                  <><MinusCircle className="w-5 h-5 text-rose-400" /> Manual Wallet Withdrawal</>
+                )}
               </h3>
               <button onClick={() => setShowAdjustmentModal(false)} className="text-slate-400 hover:text-white">✕</button>
             </div>
@@ -586,11 +626,34 @@ export default function AdminWallet() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Amount (+ / -)</label>
+                  <label className="block text-slate-300 font-semibold mb-1">
+                    {adjustmentMode === 'deposit' ? 'Deposit Amount (ETB)' : 'Withdrawal Amount (ETB)'}
+                    {adjustmentMode === 'withdraw' && selectedUserObj && (
+                      <span className="text-amber-400 font-normal text-[11px] ml-1">(User balance: {selectedUserObj.walletBalance} ETB)</span>
+                    )}
+                  </label>
                   <input
                     type="number"
+                    min="1"
+                    step="any"
                     value={adjustmentAmount}
-                    onChange={e => setAdjustmentAmount(Number(e.target.value))}
+                    onChange={e => {
+                      const val = Number(e.target.value);
+                      setAdjustmentAmount(val);
+                      if (val <= 0) {
+                        setAdjustState('error');
+                        setAdjustMsg('Amount must be positive (> 0)');
+                      } else if (adjustmentMode === 'withdraw' && selectedUserObj && val > selectedUserObj.walletBalance) {
+                        setAdjustState('error');
+                        setAdjustMsg(`Cannot withdraw more than user balance (${selectedUserObj.walletBalance} ETB)`);
+                      } else {
+                        if (adjustState === 'error') {
+                          setAdjustState('idle');
+                          setAdjustMsg('');
+                        }
+                      }
+                    }}
+                    placeholder="Enter positive ETB amount"
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-purple-500"
                   />
                 </div>
@@ -605,20 +668,51 @@ export default function AdminWallet() {
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white focus:outline-none focus:border-purple-500"
                 />
               </div>
+
+              {/* Status message banner (Loading, Checkmark ✓, or X ✗) */}
+              {adjustState !== 'idle' && (
+                <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all ${
+                  adjustState === 'loading' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :
+                  adjustState === 'success' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
+                  'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                }`}>
+                  {adjustState === 'loading' && <Loader2 className="w-4 h-4 animate-spin shrink-0 text-amber-400" />}
+                  {adjustState === 'success' && <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />}
+                  {adjustState === 'error'   && <XCircle className="w-4 h-4 shrink-0 text-rose-400" />}
+                  <span>{adjustMsg}</span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t border-slate-800 pt-3">
               <button
-                onClick={() => setShowAdjustmentModal(false)}
-                className="px-4 py-2 bg-slate-800 text-slate-300 text-xs rounded-lg font-semibold"
+                type="button"
+                onClick={() => {
+                  setShowAdjustmentModal(false);
+                  setAdjustState('idle');
+                  setAdjustMsg('');
+                }}
+                className="px-4 py-2 bg-slate-800 text-slate-300 text-xs rounded-lg font-semibold hover:bg-slate-700 transition-colors"
               >
                 Cancel
               </button>
               <button
+                type="button"
+                disabled={adjustState === 'loading' || adjustState === 'success'}
                 onClick={handleManualAdjustSubmit}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded-lg font-semibold shadow-lg shadow-purple-900/40"
+                className={`px-4 py-2 text-white text-xs rounded-lg font-semibold disabled:opacity-60 transition-all flex items-center gap-2 shadow-lg ${
+                  adjustmentMode === 'deposit'
+                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/40'
+                    : 'bg-rose-600 hover:bg-rose-500 shadow-rose-900/40'
+                }`}
               >
-                Post Adjustment
+                {adjustState === 'loading' ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Processing…</span></>
+                ) : adjustState === 'success' ? (
+                  <><CheckCircle2 className="w-3.5 h-3.5 text-white" /><span>Completed!</span></>
+                ) : (
+                  <span>{adjustmentMode === 'deposit' ? 'Post Deposit' : 'Post Withdrawal'}</span>
+                )}
               </button>
             </div>
           </div>
