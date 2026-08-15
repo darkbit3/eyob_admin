@@ -1,9 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Auction, AuctionStatus, Product } from '../data/mockData';
+import { bidsApi } from '../utils/api';
 import {
-  Gavel, Search, Plus, Edit2, PauseCircle, PlayCircle, XCircle, ShieldAlert
+  Gavel, Search, Plus, Edit2, PauseCircle, PlayCircle, XCircle, ShieldAlert,
+  ChevronDown, ChevronUp, Users, Trophy, CheckCircle, Loader2
 } from 'lucide-react';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface BidRow {
+  id: string;
+  bidderId: string;
+  maskedBidderId: string;
+  amount: number;
+  timestamp: string;
+  isDuplicate: boolean;
+  isLowestUnique: boolean;
+}
 
 export default function AdminAuctions() {
   const { auctions, products, createAuction, updateAuction, pauseAuction, resumeAuction, cancelAuction } = useApp();
@@ -32,6 +45,37 @@ export default function AdminAuctions() {
     type: 'pause' | 'resume' | 'cancel';
     auction: Auction;
   } | null>(null);
+
+  // ── Expanded bid rows ─────────────────────────────────────────────────────
+  const [expandedAuctionId, setExpandedAuctionId] = useState<string | null>(null);
+  const [bidData, setBidData] = useState<BidRow[]>([]);
+  const [bidsLoading, setBidsLoading] = useState(false);
+
+  function toggleBidders(auctionId: string) {
+    if (expandedAuctionId === auctionId) {
+      // collapse
+      setExpandedAuctionId(null);
+      setBidData([]);
+      return;
+    }
+    setExpandedAuctionId(auctionId);
+    setBidData([]);
+    setBidsLoading(true);
+    bidsApi.forAuction(auctionId)
+      .then(res => {
+        setBidData((res.data || []).map((b: any) => ({
+          id: b.id,
+          bidderId: b.bidder_id ?? b.bidderId ?? '',
+          maskedBidderId: b.masked_bidder_id ?? b.maskedBidderId ?? `#${String(b.bidder_id ?? '').slice(-4)}`,
+          amount: Number(b.amount ?? 0),
+          timestamp: b.created_at ?? b.timestamp ?? '',
+          isDuplicate: Boolean(b.is_duplicate ?? false),
+          isLowestUnique: Boolean(b.is_lowest_unique ?? false),
+        })));
+      })
+      .catch(() => setBidData([]))
+      .finally(() => setBidsLoading(false));
+  }
 
   function resetForm() {
     setEditingAuction(null);
@@ -240,72 +284,190 @@ export default function AdminAuctions() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              {filtered.map(a => (
-                <tr key={a.id} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <img src={a.image} alt={a.title} className="w-10 h-10 object-cover rounded-lg flex-shrink-0" />
-                      <div>
-                        <p className="font-bold text-white text-xs">{a.title}</p>
-                        <p className="text-[10px] text-purple-400 font-mono">{a.category}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4">{statusBadge(a.status)}</td>
-                  <td className="p-4 font-mono font-semibold text-slate-200">
-                    {a.retailValue.toLocaleString()} ETB
-                  </td>
-                  <td className="p-4 font-mono text-slate-400">
-                    {a.minBid} – {a.maxBid} ETB
-                  </td>
-                  <td className="p-4">
-                    <div className="text-slate-200 font-bold">{a.totalBids} bids</div>
-                    <div className="text-[10px] text-slate-500">{a.totalParticipants} bidders</div>
-                  </td>
-                  <td className="p-4 font-mono text-[11px] text-slate-400">
-                    <div>Start: {new Date(a.startTime).toLocaleDateString()}</div>
-                    <div>End: {new Date(a.endTime).toLocaleDateString()}</div>
-                  </td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => handleOpenEdit(a)}
-                        className="p-1.5 text-slate-400 hover:text-purple-300 hover:bg-slate-800 rounded-md transition-colors"
-                        title="Edit Auction"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
+              {filtered.map(a => {
+                const isExpanded = expandedAuctionId === a.id;
 
-                      <button
-                        onClick={() => a.status === 'active' && setConfirmActionModal({ type: 'pause', auction: a })}
-                        disabled={a.status !== 'active'}
-                        className={`p-1.5 rounded-md transition-colors ${a.status === 'active' ? 'text-amber-400 hover:bg-amber-950/40' : 'text-slate-600 bg-slate-900/60 cursor-not-allowed'}`}
-                        title={a.status === 'active' ? 'Pause Auction' : 'Pause unavailable'}
-                      >
-                        <PauseCircle className="w-3.5 h-3.5" />
-                      </button>
+                // Compute stats from fetched bid data when expanded
+                const amountCounts: Record<number, number> = {};
+                if (isExpanded) {
+                  bidData.forEach(b => { amountCounts[b.amount] = (amountCounts[b.amount] || 0) + 1; });
+                }
+                const uniqueAmounts = Object.keys(amountCounts).map(Number).filter(amt => amountCounts[amt] === 1).sort((a, b) => a - b);
+                const lowestUnique = uniqueAmounts[0] ?? null;
+                const winningBid = lowestUnique !== null ? bidData.find(b => b.amount === lowestUnique) : null;
+                const participantCount = new Set(bidData.map(b => b.bidderId)).size;
 
-                      <button
-                        onClick={() => a.status === 'paused' && setConfirmActionModal({ type: 'resume', auction: a })}
-                        disabled={a.status !== 'paused'}
-                        className={`p-1.5 rounded-md transition-colors ${a.status === 'paused' ? 'text-emerald-400 hover:bg-emerald-950/40' : 'text-slate-600 bg-slate-900/60 cursor-not-allowed'}`}
-                        title={a.status === 'paused' ? 'Resume Auction' : 'Resume unavailable'}
-                      >
-                        <PlayCircle className="w-3.5 h-3.5" />
-                      </button>
+                return (
+                  <>
+                    {/* ── Main row ─────────────────────────────────────────── */}
+                    <tr
+                      key={a.id}
+                      onClick={() => toggleBidders(a.id)}
+                      className={`transition-colors cursor-pointer select-none ${isExpanded ? 'bg-slate-800/60 border-l-2 border-l-purple-500' : 'hover:bg-slate-800/40'}`}
+                    >
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <img src={a.image} alt={a.title} className="w-10 h-10 object-cover rounded-lg flex-shrink-0" />
+                          <div>
+                            <p className="font-bold text-white text-xs">{a.title}</p>
+                            <p className="text-[10px] text-purple-400 font-mono">{a.category}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4">{statusBadge(a.status)}</td>
+                      <td className="p-4 font-mono font-semibold text-slate-200">
+                        {a.retailValue.toLocaleString()} ETB
+                      </td>
+                      <td className="p-4 font-mono text-slate-400">
+                        {a.minBid} – {a.maxBid} ETB
+                      </td>
+                      <td className="p-4">
+                        <div className="text-slate-200 font-bold">{a.totalBids} bids</div>
+                        <div className="text-[10px] text-slate-500">{a.totalParticipants} bidders</div>
+                      </td>
+                      <td className="p-4 font-mono text-[11px] text-slate-400">
+                        <div>Start: {new Date(a.startTime).toLocaleDateString()}</div>
+                        <div>End: {new Date(a.endTime).toLocaleDateString()}</div>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Toggle indicator */}
+                          <span className="text-slate-500 mr-1">
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-purple-400" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </span>
 
-                      <button
-                        onClick={() => a.status !== 'closed' && setConfirmActionModal({ type: 'cancel', auction: a })}
-                        disabled={a.status === 'closed'}
-                        className={`p-1.5 rounded-md transition-colors ${a.status !== 'closed' ? 'text-rose-400 hover:bg-rose-950/40' : 'text-slate-600 bg-slate-900/60 cursor-not-allowed'}`}
-                        title={a.status !== 'closed' ? 'Cancel Auction' : 'Already closed'}
-                      >
-                        <XCircle className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                          <button
+                            onClick={e => { e.stopPropagation(); handleOpenEdit(a); }}
+                            className="p-1.5 text-slate-400 hover:text-purple-300 hover:bg-slate-800 rounded-md transition-colors"
+                            title="Edit Auction"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            onClick={e => { e.stopPropagation(); a.status === 'active' && setConfirmActionModal({ type: 'pause', auction: a }); }}
+                            disabled={a.status !== 'active'}
+                            className={`p-1.5 rounded-md transition-colors ${a.status === 'active' ? 'text-amber-400 hover:bg-amber-950/40' : 'text-slate-600 bg-slate-900/60 cursor-not-allowed'}`}
+                            title={a.status === 'active' ? 'Pause Auction' : 'Pause unavailable'}
+                          >
+                            <PauseCircle className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            onClick={e => { e.stopPropagation(); a.status === 'paused' && setConfirmActionModal({ type: 'resume', auction: a }); }}
+                            disabled={a.status !== 'paused'}
+                            className={`p-1.5 rounded-md transition-colors ${a.status === 'paused' ? 'text-emerald-400 hover:bg-emerald-950/40' : 'text-slate-600 bg-slate-900/60 cursor-not-allowed'}`}
+                            title={a.status === 'paused' ? 'Resume Auction' : 'Resume unavailable'}
+                          >
+                            <PlayCircle className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            onClick={e => { e.stopPropagation(); a.status !== 'closed' && setConfirmActionModal({ type: 'cancel', auction: a }); }}
+                            disabled={a.status === 'closed'}
+                            className={`p-1.5 rounded-md transition-colors ${a.status !== 'closed' ? 'text-rose-400 hover:bg-rose-950/40' : 'text-slate-600 bg-slate-900/60 cursor-not-allowed'}`}
+                            title={a.status !== 'closed' ? 'Cancel Auction' : 'Already closed'}
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* ── Expanded bidders panel ────────────────────────────── */}
+                    {isExpanded && (
+                      <tr key={`${a.id}-bids`} className="bg-slate-950/60">
+                        <td colSpan={7} className="px-6 pb-6 pt-2">
+                          {/* Summary stats */}
+                          <div className="flex items-center gap-6 mb-4 text-xs font-semibold text-slate-400">
+                            <span className="flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5 text-purple-400" />
+                              {bidsLoading ? '…' : participantCount} Participants
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <Gavel className="w-3.5 h-3.5 text-blue-400" />
+                              {bidsLoading ? '…' : bidData.length} Total Bids
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                              {bidsLoading ? '…' : uniqueAmounts.length} Unique Bids
+                            </span>
+                            {lowestUnique !== null && (
+                              <span className="flex items-center gap-1.5">
+                                <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                                Lowest Unique: <span className="text-amber-300 font-bold ml-1">{lowestUnique.toFixed(1)} ETB</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {bidsLoading ? (
+                            <div className="flex items-center gap-2 text-slate-400 text-xs py-4">
+                              <Loader2 className="w-4 h-4 animate-spin" /> Loading bids…
+                            </div>
+                          ) : bidData.length === 0 ? (
+                            <p className="text-slate-500 text-xs py-4">No bids placed on this auction yet.</p>
+                          ) : (
+                            <div className="rounded-xl border border-slate-800 overflow-hidden">
+                              <table className="w-full text-left text-xs">
+                                <thead className="bg-slate-800 text-slate-400 uppercase tracking-wider font-semibold">
+                                  <tr>
+                                    <th className="px-4 py-2.5">#</th>
+                                    <th className="px-4 py-2.5">Bidder ID</th>
+                                    <th className="px-4 py-2.5">Bid Amount</th>
+                                    <th className="px-4 py-2.5">Time</th>
+                                    <th className="px-4 py-2.5">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-800/60">
+                                  {bidData.map((b, idx) => {
+                                    const count = amountCounts[b.amount] || 1;
+                                    const isDup = count > 1;
+                                    const isWinner = winningBid?.id === b.id;
+                                    return (
+                                      <tr
+                                        key={b.id}
+                                        className={`text-slate-300 ${isWinner ? 'bg-emerald-900/30' : isDup ? 'bg-rose-900/20' : 'hover:bg-slate-800/30'}`}
+                                      >
+                                        <td className="px-4 py-2.5 text-slate-500 font-mono">{idx + 1}</td>
+                                        <td className="px-4 py-2.5 font-mono font-semibold text-purple-300">
+                                          Bidder {b.maskedBidderId || `#${b.bidderId.slice(-4)}`}
+                                        </td>
+                                        <td className="px-4 py-2.5 font-mono font-bold">
+                                          <span className={isDup ? 'line-through text-rose-400' : isWinner ? 'text-amber-300' : 'text-white'}>
+                                            {b.amount.toFixed(1)} ETB
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-2.5 text-slate-500 font-mono">
+                                          {b.timestamp ? new Date(b.timestamp).toLocaleString() : '—'}
+                                        </td>
+                                        <td className="px-4 py-2.5">
+                                          {isWinner ? (
+                                            <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                              <Trophy className="w-3 h-3" /> WINNER
+                                            </span>
+                                          ) : isDup ? (
+                                            <span className="inline-flex items-center gap-1 bg-rose-500/10 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                              <XCircle className="w-3 h-3" /> DUPLICATE ×{count}
+                                            </span>
+                                          ) : (
+                                            <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                              <CheckCircle className="w-3 h-3" /> UNIQUE
+                                            </span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                );
+              })}
             </tbody>
           </table>
         </div>
