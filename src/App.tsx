@@ -15,6 +15,7 @@ import AdminWallet        from './pages/AdminWallet';
 import AdminWinners       from './pages/AdminWinners';
 import AdminReports       from './pages/AdminReports';
 import AdminSettings      from './pages/AdminSettings';
+import AdminProfit        from './pages/AdminProfit';
 
 function RequireAdmin({ children }: { children: React.ReactNode }) {
   const { currentUser } = useApp();
@@ -46,6 +47,7 @@ export default function App() {
             <Route path={ADMIN_ROUTES.WINNERS}       element={<AdminWinners />} />
             <Route path={ADMIN_ROUTES.REPORTS}       element={<AdminReports />} />
             <Route path={ADMIN_ROUTES.SETTINGS}      element={<AdminSettings />} />
+            <Route path={ADMIN_ROUTES.PROFIT}        element={<AdminProfit />} />
           </Route>
 
           {/* ── Fallback ─────────────────────────────────────────────── */}
