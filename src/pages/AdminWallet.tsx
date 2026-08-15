@@ -19,6 +19,8 @@ export default function AdminWallet() {
   const [selectedUser, setSelectedUser] = useState<typeof users[0] | null>(null);
   const [typeFilter, setTypeFilter] = useState('all');
   const [methodFilter, setMethodFilter] = useState('');
+  const [txPage, setTxPage] = useState(1);
+  const TX_PER_PAGE = 10;
   const [queueTab, setQueueTab] = useState<'pending' | 'history'>('pending');
 
   const [previewItem, setPreviewItem] = useState<PaymentQueueItem | null>(null);
@@ -276,6 +278,9 @@ export default function AdminWallet() {
     const matchesUser = !selectedUser || t.userId === selectedUser.id;
     return matchesSearch && matchesType && matchesMethod && matchesUser;
   });
+
+  const totalTxPages = Math.max(1, Math.ceil(filteredTx.length / TX_PER_PAGE));
+  const pagedTx = filteredTx.slice((txPage - 1) * TX_PER_PAGE, txPage * TX_PER_PAGE);
 
   const pendingQueue = paymentQueue.filter(p => p.status === 'pending');
   const historyQueue = paymentQueue.filter(p => p.status !== 'pending');
@@ -622,7 +627,7 @@ export default function AdminWallet() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              {filteredTx.map(t => {
+              {pagedTx.map(t => {
                 const method = t.paymentMethod ?? '';
                 const methodLabel = method.toLowerCase().includes('chapa') ? 'Chapa'
                   : method.toLowerCase().includes('manual') || method.toLowerCase().includes('bank') || method.toLowerCase().includes('cbe') || method.toLowerCase().includes('telebirr') ? 'Manual'
@@ -697,6 +702,53 @@ export default function AdminWallet() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between px-2 pt-3 border-t border-slate-800">
+          <p className="text-xs text-slate-500">
+            Showing <span className="text-slate-300 font-semibold">{filteredTx.length === 0 ? 0 : (txPage - 1) * TX_PER_PAGE + 1}</span>–<span className="text-slate-300 font-semibold">{Math.min(txPage * TX_PER_PAGE, filteredTx.length)}</span> of <span className="text-slate-300 font-semibold">{filteredTx.length}</span> transactions
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setTxPage(p => Math.max(1, p - 1))}
+              disabled={txPage === 1}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+            >
+              ← Prev
+            </button>
+            {Array.from({ length: totalTxPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalTxPages || Math.abs(p - txPage) <= 1)
+              .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('…');
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p, i) =>
+                p === '…' ? (
+                  <span key={`ellipsis-${i}`} className="px-2 text-slate-500 text-xs">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setTxPage(p as number)}
+                    className={`w-8 h-8 text-xs font-bold rounded-lg transition-colors ${
+                      txPage === p
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+            <button
+              onClick={() => setTxPage(p => Math.min(totalTxPages, p + 1))}
+              disabled={txPage === totalTxPages}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+            >
+              Next →
+            </button>
+          </div>
         </div>
       </div>
 
