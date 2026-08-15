@@ -32,6 +32,32 @@ export default function AdminAuctions() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [editingAuction, setEditingAuction] = useState<Auction | null>(null);
 
+  // ── Expanded bid rows ─────────────────────────────────────────────────────
+  const [expandedAuctionId, setExpandedAuctionId] = useState<string | null>(null);
+  const [bidData, setBidData] = useState<BidRow[]>([]);
+  const [bidsLoading, setBidsLoading] = useState(false);
+
+  function fetchBids(auctionId: string, showSpinner = true) {
+    if (showSpinner) setBidsLoading(true);
+    bidsApi.forAuction(auctionId)
+      .then(res => {
+        setBidData((res.data || []).map((b: any) => ({
+          id: b.id,
+          bidderId: b.bidder_id ?? b.bidderId ?? '',
+          maskedBidderId: b.masked_bidder_id ?? b.maskedBidderId ?? `#${String(b.bidder_id ?? '').slice(-4)}`,
+          bidderName: b.bidder_name ?? b.bidderName ?? '',
+          bidderPhone: b.bidder_phone ?? b.bidderPhone ?? '',
+          bidderPhoto: b.bidder_photo ?? b.bidderPhoto ?? null,
+          amount: Number(b.amount ?? 0),
+          timestamp: b.created_at ?? b.timestamp ?? '',
+          isDuplicate: Boolean(b.is_duplicate ?? false),
+          isLowestUnique: Boolean(b.is_lowest_unique ?? false),
+        })));
+      })
+      .catch(() => setBidData([]))
+      .finally(() => setBidsLoading(false));
+  }
+
   // ── Manual refresh ────────────────────────────────────────────────────────
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
@@ -63,49 +89,12 @@ export default function AdminAuctions() {
     finally { setRefreshing(false); }
   }, [expandedAuctionId]);
 
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Electronics');
-  const [retailValue, setRetailValue] = useState(50000);
-  const [bidPerCost, setBidPerCost] = useState(100);
-  const [minBid, setMinBid] = useState(1);
-  const [maxBid, setMaxBid] = useState(500);
-  const [startTime, setStartTime] = useState('2026-08-10T08:00');
-  const [endTime, setEndTime] = useState('2026-08-20T20:00');
-  const [imageUrl, setImageUrl] = useState('https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=600&h=400&fit=crop');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-
-  const [confirmActionModal, setConfirmActionModal] = useState<{
-    type: 'pause' | 'resume' | 'cancel';
-    auction: Auction;
-  } | null>(null);
-
-  // ── Expanded bid rows ─────────────────────────────────────────────────────
-  const [expandedAuctionId, setExpandedAuctionId] = useState<string | null>(null);
-  const [bidData, setBidData] = useState<BidRow[]>([]);
-  const [bidsLoading, setBidsLoading] = useState(false);
-
-  // fetch (or re-fetch) bids for the expanded auction
-  function fetchBids(auctionId: string, showSpinner = true) {
-    if (showSpinner) setBidsLoading(true);
-    bidsApi.forAuction(auctionId)
-      .then(res => {
-        setBidData((res.data || []).map((b: any) => ({
-          id: b.id,
-          bidderId: b.bidder_id ?? b.bidderId ?? '',
-          maskedBidderId: b.masked_bidder_id ?? b.maskedBidderId ?? `#${String(b.bidder_id ?? '').slice(-4)}`,
-          bidderName: b.bidder_name ?? b.bidderName ?? '',
-          bidderPhone: b.bidder_phone ?? b.bidderPhone ?? '',
-          bidderPhoto: b.bidder_photo ?? b.bidderPhoto ?? null,
-          amount: Number(b.amount ?? 0),
-          timestamp: b.created_at ?? b.timestamp ?? '',
-          isDuplicate: Boolean(b.is_duplicate ?? false),
-          isLowestUnique: Boolean(b.is_lowest_unique ?? false),
-        })));
-      })
-      .catch(() => setBidData([]))
-      .finally(() => setBidsLoading(false));
-  }
+  // Live-poll bids every 15s while a panel is open
+  useEffect(() => {
+    if (!expandedAuctionId) return;
+    const id = window.setInterval(() => fetchBids(expandedAuctionId, false), 15000);
+    return () => window.clearInterval(id);
+  }, [expandedAuctionId]);
 
   function toggleBidders(auctionId: string) {
     if (expandedAuctionId === auctionId) {
@@ -118,12 +107,22 @@ export default function AdminAuctions() {
     fetchBids(auctionId, true);
   }
 
-  // Live-poll bids every 15s while a panel is open
-  useEffect(() => {
-    if (!expandedAuctionId) return;
-    const id = window.setInterval(() => fetchBids(expandedAuctionId, false), 15000);
-    return () => window.clearInterval(id);
-  }, [expandedAuctionId]);
+  // ── Form state ────────────────────────────────────────────────────────────
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('Electronics');
+  const [retailValue, setRetailValue] = useState(50000);
+  const [bidPerCost, setBidPerCost] = useState(100);
+  const [minBid, setMinBid] = useState(1);
+  const [maxBid, setMaxBid] = useState(500);
+  const [startTime, setStartTime] = useState('2026-08-10T08:00');
+  const [endTime, setEndTime] = useState('2026-08-20T20:00');
+  const [imageUrl, setImageUrl] = useState('https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=600&h=400&fit=crop');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [confirmActionModal, setConfirmActionModal] = useState<{
+    type: 'pause' | 'resume' | 'cancel';
+    auction: Auction;
+  } | null>(null);
 
   function resetForm() {
     setEditingAuction(null);
