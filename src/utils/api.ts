@@ -220,7 +220,12 @@ export const reportsApi = {
   categories: () => request<{ success: boolean; data: any[] }>('/reports/categories'),
   payments: () => request<{ success: boolean; data: any[] }>('/reports/payments'),
   winnerStats: () => request<{ success: boolean; data: any }>('/winners/report/stats'),
+  profit: (params?: { status?: string; date_from?: string; date_to?: string }) => {
+    const q = new URLSearchParams(params as any).toString();
+    return request<{ success: boolean; data: { auctions: any[]; summary: any } }>(`/reports/profit${q ? `?${q}` : ''}`);
+  },
 };
+
 
 // ── Announcements (admin sends via notifications) ─────────────────────────────
 export const announcementsApi = {
