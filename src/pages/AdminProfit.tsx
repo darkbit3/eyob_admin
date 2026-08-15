@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useApp } from '../context/AppContext';
 import { reportsApi } from '../utils/api';
 import {
   TrendingUp, Gavel, Package, CreditCard, ArrowDownLeft, ArrowUpRight,
@@ -46,6 +47,7 @@ interface ProfitSummary {
 }
 
 export default function AdminProfit() {
+  const { auctions: contextAuctions, bids: contextBids, transactions: contextTxs } = useApp();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [auctions, setAuctions] = useState<AuctionProfitItem[]>([]);
@@ -72,7 +74,61 @@ export default function AdminProfit() {
   const [sortKey, setSortKey] = useState<SortKey>('admin_gain');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
-  // Fetch real-time data from database via backend API
+  // Fallback builder from AppContext live memory/data
+  const buildFromContext = useCallback(() => {
+    const list: AuctionProfitItem[] = (contextAuctions || [])
+      .filter((a: any) => statusFilter === 'all' || a.status === statusFilter)
+      .map((a: any) => {
+        const aBids = (contextBids || []).filter((b: any) => b.auctionId === a.id);
+        const aTxs = (contextTxs || []).filter((t: any) => t.type === 'bid_placed' && t.description?.includes(a.id));
+        const totalBids = a.totalBids ?? aBids.length;
+        const bidCost = Number(a.bidPerCost ?? 100);
+        const feeRev = totalBids * bidCost;
+        const retVal = Number(a.retailValue ?? 0);
+        const bidAmt = aTxs.reduce((s: number, t: any) => s + Math.abs(Number(t.amount ?? 0)), 0)
+          || aBids.reduce((s: number, b: any) => s + Math.abs(Number(b.amount ?? bidCost)), 0);
+
+        return {
+          id: a.id,
+          title: a.title,
+          category: a.category,
+          status: a.status,
+          image: a.image,
+          retail_value: retVal,
+          bid_per_cost: bidCost,
+          total_bids: totalBids,
+          total_participants: a.totalParticipants ?? aBids.length,
+          start_time: a.startTime,
+          end_time: a.endTime,
+          created_at: a.startTime || new Date().toISOString(),
+          lowest_unique_bid: a.lowestUniqueBid ?? null,
+          winner_id: a.winnerId ?? null,
+          winner_name: a.winnerName ?? null,
+          total_bid_amount: bidAmt,
+          total_bid_per_cost_revenue: feeRev,
+          admin_gain: feeRev - retVal,
+        };
+      });
+
+    const sumRetail = list.reduce((s: number, r: AuctionProfitItem) => s + r.retail_value, 0);
+    const sumFeeRev = list.reduce((s: number, r: AuctionProfitItem) => s + r.total_bid_per_cost_revenue, 0);
+    const sumBidAmt = (contextTxs || []).filter((t: any) => t.type === 'bid_placed').reduce((s: number, t: any) => s + Math.abs(Number(t.amount ?? 0)), 0);
+    const sumDep = (contextTxs || []).filter((t: any) => ['credit_purchase', 'wallet_deposit', 'manual_adjustment'].includes(t.type) && Number(t.amount) > 0).reduce((s: number, t: any) => s + Number(t.amount ?? 0), 0);
+    const sumWd = (contextTxs || []).filter((t: any) => t.type === 'manual_adjustment' && Number(t.amount) < 0).reduce((s: number, t: any) => s + Math.abs(Number(t.amount ?? 0)), 0);
+
+    setAuctions(list);
+    setSummary({
+      auction_count: list.length,
+      total_retail_value: sumRetail,
+      total_bid_fee_revenue: sumFeeRev,
+      total_bid_amount: sumBidAmt,
+      total_deposits: sumDep,
+      total_withdrawals: sumWd,
+      net_profit: sumFeeRev - sumWd,
+    });
+  }, [contextAuctions, contextBids, contextTxs, statusFilter]);
+
+  // Fetch real-time data from database via backend API with fallback
   const fetchData = useCallback(async (isBackground = false) => {
     if (!isBackground) setLoading(true);
     else setRefreshing(true);
@@ -84,21 +140,20 @@ export default function AdminProfit() {
         date_to: dateTo || undefined,
       });
 
-      if (res.success && res.data) {
-        const rawAuctions = res.data.auctions || [];
-        const formatted = rawAuctions.map((a: any) => ({
+      if (res.success && res.data && Array.isArray(res.data.auctions) && res.data.auctions.length > 0) {
+        const rawAuctions = res.data.auctions;
+        const formatted: AuctionProfitItem[] = rawAuctions.map((a: any) => ({
           ...a,
           retail_value: Number(a.retail_value ?? 0),
-          bid_per_cost: Number(a.bid_per_cost ?? 0),
+          bid_per_cost: Number(a.bid_per_cost ?? 100),
           total_bids: Number(a.total_bids ?? 0),
           total_participants: Number(a.total_participants ?? 0),
           total_bid_amount: Number(a.total_bid_amount ?? 0),
-          total_bid_per_cost_revenue: Number(a.total_bid_per_cost_revenue ?? (Number(a.bid_per_cost ?? 0) * Number(a.total_bids ?? 0))),
-          admin_gain: Number(a.admin_gain ?? ((Number(a.bid_per_cost ?? 0) * Number(a.total_bids ?? 0)) - Number(a.retail_value ?? 0))),
+          total_bid_per_cost_revenue: Number(a.total_bid_per_cost_revenue ?? (Number(a.bid_per_cost ?? 100) * Number(a.total_bids ?? 0))),
+          admin_gain: Number(a.admin_gain ?? ((Number(a.bid_per_cost ?? 100) * Number(a.total_bids ?? 0)) - Number(a.retail_value ?? 0))),
         }));
         setAuctions(formatted);
 
-        // Keep selected auction updated if it still exists
         if (selectedAuction) {
           const updatedSelected = formatted.find((item: any) => item.id === selectedAuction.id);
           if (updatedSelected) setSelectedAuction(updatedSelected);
@@ -106,7 +161,7 @@ export default function AdminProfit() {
 
         if (res.data.summary) {
           setSummary({
-            auction_count: Number(res.data.summary.auction_count ?? 0),
+            auction_count: Number(res.data.summary.auction_count ?? formatted.length),
             total_retail_value: Number(res.data.summary.total_retail_value ?? 0),
             total_bid_fee_revenue: Number(res.data.summary.total_bid_fee_revenue ?? 0),
             total_bid_amount: Number(res.data.summary.total_bid_amount ?? 0),
@@ -115,18 +170,22 @@ export default function AdminProfit() {
             net_profit: Number(res.data.summary.net_profit ?? 0),
           });
         }
+      } else {
+        // Fallback to client context if API returns 0 items
+        buildFromContext();
       }
     } catch (err) {
-      console.error('Failed to load profit report:', err);
+      console.warn('API profit report error, using AppContext fallback:', err);
+      buildFromContext();
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [statusFilter, dateFrom, dateTo, selectedAuction?.id]);
+  }, [statusFilter, dateFrom, dateTo, selectedAuction?.id, buildFromContext]);
 
   useEffect(() => {
     fetchData();
-  }, [statusFilter, dateFrom, dateTo]);
+  }, [statusFilter, dateFrom, dateTo, contextAuctions]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {

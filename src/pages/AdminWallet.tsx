@@ -505,14 +505,14 @@ export default function AdminWallet() {
                 type="text"
                 placeholder="Filter transactions..."
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={e => { setSearchTerm(e.target.value); setTxPage(1); }}
                 className="w-full bg-slate-950/70 border border-slate-800 rounded-lg pl-9 pr-4 py-1.5 text-xs text-slate-200 focus:outline-none"
               />
             </div>
 
             <select
               value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
+              onChange={e => { setTypeFilter(e.target.value); setTxPage(1); }}
               className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none"
             >
               <option value="all">All Types</option>
@@ -528,7 +528,7 @@ export default function AdminWallet() {
             {/* Method filter */}
             <select
               value={methodFilter ?? 'all'}
-              onChange={e => setMethodFilter(e.target.value === 'all' ? '' : e.target.value)}
+              onChange={e => { setMethodFilter(e.target.value === 'all' ? '' : e.target.value); setTxPage(1); }}
               className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none"
             >
               <option value="all">All Methods</option>
