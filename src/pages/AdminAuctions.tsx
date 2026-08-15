@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { Auction, AuctionStatus, Product } from '../data/mockData';
 import { bidsApi, auctionsApi } from '../utils/api';
+import { useLocation } from 'react-router-dom';
 import {
   Gavel, Search, Plus, Edit2, PauseCircle, PlayCircle, XCircle, ShieldAlert,
-  ChevronDown, ChevronUp, Users, Trophy, CheckCircle, Loader2, RefreshCw
+  ChevronDown, ChevronUp, Users, Trophy, CheckCircle, Loader2, RefreshCw, Package
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -23,6 +24,7 @@ interface BidRow {
 
 export default function AdminAuctions() {
   const { auctions, products, createAuction, updateAuction, pauseAuction, resumeAuction, cancelAuction, setAuctions } = useApp();
+  const location = useLocation();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -123,6 +125,33 @@ export default function AdminAuctions() {
     type: 'pause' | 'resume' | 'cancel';
     auction: Auction;
   } | null>(null);
+
+  // ── Pre-fill from Products page navigation ────────────────────────────────
+  useEffect(() => {
+    const state = location.state as { prefillProduct?: Product } | null;
+    if (state?.prefillProduct) {
+      const p = state.prefillProduct;
+      setEditingAuction(null);
+      setTitle(p.name);
+      setDescription(p.description ?? '');
+      setCategory(p.category);
+      setRetailValue(p.retailValue);
+      setBidPerCost(100);
+      setMinBid(1);
+      setMaxBid(500);
+      setImageUrl((p.images && p.images[0]) ?? '');
+      setProductId(p.id);
+      setSelectedProduct(p);
+      // Default dates: start now, end 10 days from now
+      const now = new Date();
+      const end = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000);
+      setStartTime(now.toISOString().substring(0, 16));
+      setEndTime(end.toISOString().substring(0, 16));
+      setShowDrawer(true);
+      // Clear the state so refreshing doesn't re-open
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
 
   function resetForm() {
     setEditingAuction(null);
@@ -711,10 +740,27 @@ export default function AdminAuctions() {
                     </div>
                   )}
                   {selectedProduct && (
-                    <div className="mt-4 p-4 bg-slate-950 border border-slate-800 rounded-lg text-[11px] text-slate-300">
-                      <div className="font-semibold text-slate-100">Linked Product Preview</div>
-                      <div className="mt-2 text-slate-400">{selectedProduct.name}</div>
-                      <div className="text-slate-500 text-[10px]">{selectedProduct.category} • {selectedProduct.retailValue.toLocaleString()} ETB</div>
+                    <div className="mt-3 p-3 bg-purple-950/40 border border-purple-500/30 rounded-xl flex items-center gap-3">
+                      <img
+                        src={(selectedProduct.images && selectedProduct.images[0]) ?? ''}
+                        alt={selectedProduct.name}
+                        className="w-14 h-14 object-cover rounded-lg border border-slate-700 flex-shrink-0"
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <Package className="w-3 h-3 text-purple-400 flex-shrink-0" />
+                          <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider">Linked Product</span>
+                        </div>
+                        <p className="font-bold text-white text-xs truncate">{selectedProduct.name}</p>
+                        <p className="text-[10px] text-slate-400">{selectedProduct.category} · {selectedProduct.retailValue.toLocaleString()} ETB retail</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedProduct(null); setProductId(''); }}
+                        className="text-slate-500 hover:text-rose-400 text-lg leading-none flex-shrink-0"
+                        title="Unlink product"
+                      >✕</button>
                     </div>
                   )}
                 </div>

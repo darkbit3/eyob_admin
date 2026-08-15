@@ -256,7 +256,9 @@ export default function AdminProducts() {
                         <button
                           onClick={e => {
                             e.stopPropagation();
-                            navigate(ADMIN_ROUTES.AUCTIONS);
+                            navigate(ADMIN_ROUTES.AUCTIONS, {
+                              state: { prefillProduct: p }
+                            });
                           }}
                           className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 border border-purple-500/30 rounded-md text-[11px] font-semibold transition-colors"
                           title="Go to Auctions to create an auction for this product"
