@@ -50,6 +50,75 @@ export default function AdminWallet() {
 
   const selectedUserObj = users.find(u => u.id === selectedUserId) || users[0];
 
+  const [queueActionState, setQueueActionState] = useState<{
+    id: string;
+    status: 'loading' | 'success' | 'error';
+    type: 'approve' | 'reject';
+    msg: string;
+  } | null>(null);
+
+  async function handleApproveQueueItem(itemId: string) {
+    setQueueActionState({ id: itemId, status: 'loading', type: 'approve', msg: 'Approving & processing transaction...' });
+    try {
+      const res = await walletApi.approvePayment(itemId);
+      setQueueActionState({ id: itemId, status: 'success', type: 'approve', msg: `✓ ${res.message || 'Approved & processed successfully!'}` });
+
+      const [txRes, qRes, uRes] = await Promise.all([
+        walletApi.allTransactions(),
+        walletApi.queue(),
+        usersApi.list(),
+      ]);
+      setTransactions((txRes.data || []).map((t: any) => ({
+        ...t,
+        timestamp: t.timestamp || t.created_at || t.createdAt || new Date().toISOString(),
+        amount: Number(t.amount || 0),
+      })));
+      setPaymentQueue(qRes.data || []);
+      setUsers(uRes.data.map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email ?? '',
+        phone: u.phone ?? '',
+        role: u.role,
+        walletBalance: Number(u.wallet_balance ?? u.walletBalance ?? 0),
+        credits: Number(u.credits ?? 0),
+        status: u.status,
+        joinedAt: u.joined_at ?? u.joinedAt ?? new Date().toISOString().split('T')[0],
+        wonAuctions: u.won_auctions ?? u.wonAuctions ?? [],
+        photo: u.photo_url ?? u.photo ?? undefined,
+      })));
+
+      setTimeout(() => setQueueActionState(null), 2200);
+    } catch (err: any) {
+      setQueueActionState({ id: itemId, status: 'error', type: 'approve', msg: `✗ ${err?.message || 'Failed to approve item.'}` });
+      setTimeout(() => setQueueActionState(null), 3000);
+    }
+  }
+
+  async function handleRejectQueueItem(itemId: string) {
+    setQueueActionState({ id: itemId, status: 'loading', type: 'reject', msg: 'Rejecting request...' });
+    try {
+      const res = await walletApi.rejectPayment(itemId, 'Verification details do not match');
+      setQueueActionState({ id: itemId, status: 'success', type: 'reject', msg: `✓ ${res.message || 'Item rejected.'}` });
+
+      const [txRes, qRes] = await Promise.all([
+        walletApi.allTransactions(),
+        walletApi.queue(),
+      ]);
+      setTransactions((txRes.data || []).map((t: any) => ({
+        ...t,
+        timestamp: t.timestamp || t.created_at || t.createdAt || new Date().toISOString(),
+        amount: Number(t.amount || 0),
+      })));
+      setPaymentQueue(qRes.data || []);
+
+      setTimeout(() => setQueueActionState(null), 2200);
+    } catch (err: any) {
+      setQueueActionState({ id: itemId, status: 'error', type: 'reject', msg: `✗ ${err?.message || 'Failed to reject item.'}` });
+      setTimeout(() => setQueueActionState(null), 3000);
+    }
+  }
+
   // Fetch real database data on page mount
   useEffect(() => {
     let active = true;
@@ -318,20 +387,43 @@ export default function AdminWallet() {
                             <ImageIcon className="w-3.5 h-3.5" /> View Receipt Slip
                           </button>
 
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => rejectPayment(item.id)}
-                              className="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-300 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1"
-                            >
-                              <XCircle className="w-3.5 h-3.5" /> Reject
-                            </button>
-                            <button
-                              onClick={() => approvePayment(item.id)}
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg shadow-md shadow-emerald-900/30 transition-colors flex items-center gap-1"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Approve & Credit
-                            </button>
-                          </div>
+                          {queueActionState?.id === item.id ? (
+                            <div className="flex items-center gap-2">
+                              {queueActionState.status === 'loading' && (
+                                <div className="flex items-center gap-1.5 text-xs text-amber-400 font-bold py-1 px-3 bg-amber-950/50 border border-amber-800 rounded-lg">
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  <span>{queueActionState.msg}</span>
+                                </div>
+                              )}
+                              {queueActionState.status === 'success' && (
+                                <div className="flex items-center gap-1.5 text-xs text-emerald-300 font-bold py-1 px-3 bg-emerald-950/60 border border-emerald-800 rounded-lg">
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                                  <span>{queueActionState.msg}</span>
+                                </div>
+                              )}
+                              {queueActionState.status === 'error' && (
+                                <div className="flex items-center gap-1.5 text-xs text-rose-300 font-bold py-1 px-3 bg-rose-950/60 border border-rose-800 rounded-lg">
+                                  <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                                  <span>{queueActionState.msg}</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleRejectQueueItem(item.id)}
+                                className="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-300 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1"
+                              >
+                                <XCircle className="w-3.5 h-3.5" /> Reject
+                              </button>
+                              <button
+                                onClick={() => handleApproveQueueItem(item.id)}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg shadow-md shadow-emerald-900/30 transition-colors flex items-center gap-1"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Approve &amp; Credit
+                              </button>
+                            </div>
+                          )}
                         </>
                       )}
                     </div>

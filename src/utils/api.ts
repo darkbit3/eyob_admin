@@ -154,9 +154,9 @@ export const walletApi = {
       body: JSON.stringify(data),
     }),
   approvePayment: (id: string) =>
-    request<{ success: boolean }>(`/wallet/queue/${id}/approve`, { method: 'PATCH' }),
+    request<{ success: boolean; message?: string }>(`/wallet/queue/${id}/approve`, { method: 'PATCH' }),
   rejectPayment: (id: string, reason?: string) =>
-    request<{ success: boolean }>(`/wallet/queue/${id}/reject`, {
+    request<{ success: boolean; message?: string }>(`/wallet/queue/${id}/reject`, {
       method: 'PATCH',
       body: JSON.stringify({ reason }),
     }),
