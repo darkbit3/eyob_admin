@@ -12,6 +12,9 @@ interface BidRow {
   id: string;
   bidderId: string;
   maskedBidderId: string;
+  bidderName: string;
+  bidderPhone: string;
+  bidderPhoto: string | null;
   amount: number;
   timestamp: string;
   isDuplicate: boolean;
@@ -67,6 +70,9 @@ export default function AdminAuctions() {
           id: b.id,
           bidderId: b.bidder_id ?? b.bidderId ?? '',
           maskedBidderId: b.masked_bidder_id ?? b.maskedBidderId ?? `#${String(b.bidder_id ?? '').slice(-4)}`,
+          bidderName: b.bidder_name ?? b.bidderName ?? '',
+          bidderPhone: b.bidder_phone ?? b.bidderPhone ?? '',
+          bidderPhoto: b.bidder_photo ?? b.bidderPhoto ?? null,
           amount: Number(b.amount ?? 0),
           timestamp: b.created_at ?? b.timestamp ?? '',
           isDuplicate: Boolean(b.is_duplicate ?? false),
@@ -412,7 +418,8 @@ export default function AdminAuctions() {
                                 <thead className="bg-slate-800 text-slate-400 uppercase tracking-wider font-semibold">
                                   <tr>
                                     <th className="px-4 py-2.5">#</th>
-                                    <th className="px-4 py-2.5">Bidder ID</th>
+                                    <th className="px-4 py-2.5">Bidder</th>
+                                    <th className="px-4 py-2.5">Phone</th>
                                     <th className="px-4 py-2.5">Bid Amount</th>
                                     <th className="px-4 py-2.5">Time</th>
                                     <th className="px-4 py-2.5">Status</th>
@@ -423,21 +430,41 @@ export default function AdminAuctions() {
                                     const count = amountCounts[b.amount] || 1;
                                     const isDup = count > 1;
                                     const isWinner = winningBid?.id === b.id;
+                                    const avatarSeed = b.bidderName || b.maskedBidderId;
                                     return (
                                       <tr
                                         key={b.id}
                                         className={`text-slate-300 ${isWinner ? 'bg-emerald-900/30' : isDup ? 'bg-rose-900/20' : 'hover:bg-slate-800/30'}`}
                                       >
                                         <td className="px-4 py-2.5 text-slate-500 font-mono">{idx + 1}</td>
-                                        <td className="px-4 py-2.5 font-mono font-semibold text-purple-300">
-                                          Bidder {b.maskedBidderId || `#${b.bidderId.slice(-4)}`}
+                                        <td className="px-4 py-2.5">
+                                          <div className="flex items-center gap-2.5">
+                                            <img
+                                              src={b.bidderPhoto ?? `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`}
+                                              alt={b.bidderName || 'Bidder'}
+                                              className="w-8 h-8 rounded-full object-cover border border-slate-700 flex-shrink-0"
+                                              onError={e => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`; }}
+                                            />
+                                            <div>
+                                              <p className="font-semibold text-white text-xs leading-tight">
+                                                {b.bidderName || '—'}
+                                                {isWinner && <Trophy className="w-3 h-3 text-amber-400 inline ml-1" />}
+                                              </p>
+                                              <p className="text-[10px] text-purple-400 font-mono">
+                                                {b.maskedBidderId || `Bidder #${b.bidderId.slice(-4)}`}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-2.5 font-mono text-slate-400 text-[11px]">
+                                          {b.bidderPhone || '—'}
                                         </td>
                                         <td className="px-4 py-2.5 font-mono font-bold">
                                           <span className={isDup ? 'line-through text-rose-400' : isWinner ? 'text-amber-300' : 'text-white'}>
                                             {b.amount.toFixed(1)} ETB
                                           </span>
                                         </td>
-                                        <td className="px-4 py-2.5 text-slate-500 font-mono">
+                                        <td className="px-4 py-2.5 text-slate-500 font-mono text-[11px]">
                                           {b.timestamp ? new Date(b.timestamp).toLocaleString() : '—'}
                                         </td>
                                         <td className="px-4 py-2.5">
