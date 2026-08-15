@@ -160,6 +160,13 @@ export const walletApi = {
       method: 'PATCH',
       body: JSON.stringify({ reason }),
     }),
+  chapaInitialize: (amount: number) =>
+    request<{ success: boolean; data: { checkout_url: string; tx_ref: string } }>('/wallet/chapa/initialize', {
+      method: 'POST',
+      body: JSON.stringify({ amount }),
+    }),
+  chapaVerify: (txRef: string) =>
+    request<{ success: boolean; message: string; data: { status: string; amount?: number } }>(`/wallet/chapa/verify/${txRef}`),
 };
 
 // ── Notifications ─────────────────────────────────────────────────────────────
