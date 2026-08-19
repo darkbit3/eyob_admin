@@ -628,6 +628,7 @@ export default function AdminAuctions() {
                 <th className="p-4">Status</th>
                 <th className="p-4">Retail Value</th>
                 <th className="p-4">Bid Range</th>
+                <th className="p-4">User Bid Limit</th>
                 <th className="p-4">Bids / Users</th>
                 <th className="p-4">Schedule</th>
                 <th className="p-4 text-right">Common Actions</th>
@@ -688,6 +689,11 @@ export default function AdminAuctions() {
                       </td>
                       <td className="p-4 font-mono text-slate-400">
                         {a.minBid} – {a.maxBid} ETB
+                      </td>
+                      <td className="p-4 font-mono font-bold">
+                        <span className={a.maxBidsPerUser ? 'text-amber-300' : 'text-slate-500'}>
+                          {a.maxBidsPerUser ? `${a.maxBidsPerUser} per user` : 'Unlimited'}
+                        </span>
                       </td>
                       <td className="p-4">
                         <div className="text-slate-200 font-bold">{a.totalBids} bids</div>
@@ -956,6 +962,19 @@ export default function AdminAuctions() {
                       value={bidPerCost}
                       onChange={e => setBidPerCost(Number(e.target.value))}
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Max Bids Per User Per Auction</label>
+                    <p className="text-[11px] text-slate-500 mb-1.5">Set to 0 for unlimited. This limit applies only to this auction.</p>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={maxBidsPerUser}
+                      onChange={e => setMaxBidsPerUser(Number(e.target.value))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500 font-mono"
+                      placeholder="0 = unlimited"
                     />
                   </div>
                 </div>
