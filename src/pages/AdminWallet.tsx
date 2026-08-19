@@ -693,8 +693,9 @@ export default function AdminWallet() {
                 return (
                 <tr
                   key={t.id}
-                  onClick={() => isChapaTx && openChapaDetailModal(t)}
-                  className={`transition-colors ${isChapaTx ? 'hover:bg-purple-950/30 cursor-pointer' : 'hover:bg-slate-800/40'}`}
+                  onClick={() => openChapaDetailModal(t)}
+                  className="transition-colors hover:bg-purple-950/30 cursor-pointer"
+                  title="Click to view complete transaction details"
                 >
                   <td className="p-3 font-semibold text-white">
                     <div className="flex items-center gap-1.5">
@@ -718,7 +719,7 @@ export default function AdminWallet() {
                   </td>
                   <td className="p-3 text-slate-300">
                     {t.description}
-                    {isChapaTx && <span className="text-[10px] text-purple-400 font-bold ml-2">(Click for Chapa Ledger Details)</span>}
+                    <span className="text-[10px] text-purple-400 font-bold ml-2">🔍 View Details</span>
                   </td>
                   <td className="p-3 font-mono font-bold">
                     <span className={Number(t.amount) >= 0 ? 'text-emerald-400' : 'text-slate-400'}>
@@ -800,12 +801,12 @@ export default function AdminWallet() {
           >
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
-                  <Zap className="w-4 h-4 text-amber-400 animate-pulse" />
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+                  <ShieldCheck className="w-4 h-4 text-purple-400" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">Chapa Automatic Gateway Audit</h3>
-                  <p className="text-[10px] text-emerald-400 font-semibold">⚡ Auto-Verified &amp; Credited</p>
+                  <h3 className="text-base font-bold text-white">Platform Transaction Audit</h3>
+                  <p className="text-[10px] text-emerald-400 font-semibold">✓ Verified Database Record</p>
                 </div>
               </div>
               <button onClick={() => setSelectedChapaTx(null)} className="text-slate-400 hover:text-white text-base font-bold">✕</button>
