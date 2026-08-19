@@ -456,6 +456,59 @@ export default function AdminSettings() {
         </div>
       </div>
 
+      {/* ── BID PER USER SETTINGS ──────────────────────────────────────── */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="border-b border-slate-800 pb-3">
+          <h2 className="text-base font-bold text-white flex items-center gap-2">
+            <Save className="w-4 h-4 text-amber-400" /> Bid Per User
+          </h2>
+          <p className="text-slate-400 text-xs mt-0.5">
+            Set the default entry fee charged to each user per bid placed on any auction.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+          <div>
+            <label className="block text-slate-300 font-semibold mb-1 text-xs">
+              Default Bid Per Cost (ETB)
+            </label>
+            <p className="text-[11px] text-slate-500 mb-2">
+              This amount is deducted from the user's wallet each time they place a bid. Applied to new auctions by default.
+            </p>
+            <input
+              type="number"
+              min={1}
+              value={defaultBidPerCost}
+              onChange={e => setDefaultBidPerCost(Number(e.target.value))}
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500 font-mono text-sm"
+              placeholder="e.g. 100"
+            />
+          </div>
+          <div>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-amber-900/30 transition-all disabled:opacity-50"
+            >
+              {saving
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving…</>
+                : <><Save className="w-3.5 h-3.5" /> Save Bid Per User</>
+              }
+            </button>
+            {saveSuccess && (
+              <p className="text-emerald-400 text-xs font-semibold mt-2 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Saved successfully
+              </p>
+            )}
+            {saveError && (
+              <p className="text-rose-400 text-xs font-semibold mt-2 flex items-center gap-1">
+                <XCircle className="w-3.5 h-3.5" /> {saveError}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* ── BANK ACCOUNT EDIT / ADD MODAL ──────────────────────────────── */}
       {showBankModal && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">

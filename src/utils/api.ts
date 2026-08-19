@@ -236,3 +236,24 @@ export const announcementsApi = {
       body: JSON.stringify(data),
     }),
 };
+
+// ── Image Upload — multipart to Cloudinary via backend ───────────────────────
+export const uploadApi = {
+  uploadImage: async (file: File): Promise<string> => {
+    const token = getToken();
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch(`${BASE}/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+
+    const body = await res.json();
+    if (!res.ok || !body.success) {
+      throw new Error(body?.message || `Upload failed (${res.status})`);
+    }
+    return body.data.url as string;
+  },
+};
