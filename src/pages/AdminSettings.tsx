@@ -529,32 +529,41 @@ export default function AdminSettings() {
                     const isAdmin = role === 'admin';
                     return (
                       <tr key={role} className="hover:bg-slate-800/40">
+                        {/* Role name */}
                         <td className="p-3">
                           <div className="flex items-center gap-2">
                             <span className={`font-bold capitalize ${isAdmin ? 'text-purple-300' : 'text-white'}`}>{role}</span>
                             {isAdmin && <span className="text-[10px] bg-purple-500/20 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded font-mono">ADMIN</span>}
                           </div>
                         </td>
+                        {/* User count */}
                         <td className="p-3 text-center">
                           <span className="bg-slate-800 text-slate-300 font-bold px-2.5 py-1 rounded-full font-mono text-[11px]">
                             {count} user{count !== 1 ? 's' : ''}
                           </span>
                         </td>
+                        {/* Auctions */}
                         <td className="p-3 text-center">
                           {isAdmin
                             ? <span className="text-emerald-400 font-bold text-[11px]">✓ Full</span>
-                            : <span className="text-slate-600 text-[11px]">—</span>}
+                            : <input type="checkbox" defaultChecked={false}
+                                className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-purple-600 focus:ring-purple-500 cursor-pointer" />}
                         </td>
+                        {/* Payments */}
                         <td className="p-3 text-center">
                           {isAdmin
                             ? <span className="text-emerald-400 font-bold text-[11px]">✓ Full</span>
-                            : <span className="text-slate-600 text-[11px]">—</span>}
+                            : <input type="checkbox" defaultChecked={false}
+                                className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-purple-600 focus:ring-purple-500 cursor-pointer" />}
                         </td>
+                        {/* Audit Logs */}
                         <td className="p-3 text-center">
                           {isAdmin
                             ? <span className="text-emerald-400 font-bold text-[11px]">✓ Full</span>
-                            : <span className="text-slate-600 text-[11px]">—</span>}
+                            : <input type="checkbox" defaultChecked={false}
+                                className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-purple-600 focus:ring-purple-500 cursor-pointer" />}
                         </td>
+                        {/* Winner Override — always locked */}
                         <td className="p-3 text-center bg-slate-950/60">
                           <div className="flex items-center justify-center gap-1">
                             <Lock className="w-3.5 h-3.5 text-slate-600" />
