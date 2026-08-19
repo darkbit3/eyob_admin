@@ -514,55 +514,61 @@ export default function AdminSettings() {
               <div className="p-6 text-center text-slate-500 text-xs">No users found in the database.</div>
             ) : (
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950 text-slate-400 font-semibold uppercase">
+                <thead className="bg-slate-950 text-slate-400 font-semibold uppercase tracking-wider">
                   <tr>
-                    <th className="p-3">Role</th>
-                    <th className="p-3 text-center">Users Count</th>
+                    <th className="p-3 sticky left-0 bg-slate-950 z-10">Role</th>
+                    <th className="p-3 text-center">Users</th>
+                    <th className="p-3 text-center">Dashboard</th>
                     <th className="p-3 text-center">Auctions</th>
-                    <th className="p-3 text-center">Payments</th>
-                    <th className="p-3 text-center">Audit Logs</th>
+                    <th className="p-3 text-center">Products</th>
+                    <th className="p-3 text-center">Users Mgmt</th>
+                    <th className="p-3 text-center">Wallet</th>
+                    <th className="p-3 text-center">Winners</th>
+                    <th className="p-3 text-center">Reports</th>
+                    <th className="p-3 text-center">Profit</th>
+                    <th className="p-3 text-center">Settings</th>
                     <th className="p-3 text-center text-amber-400">Winner Override</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800 text-slate-300">
                   {roleStats.map(({ role, count }) => {
-                    const isAdmin = role === 'admin';
+                    const isAdmin    = role === 'admin';
+                    const isCustomer = role === 'customer';
+
+                    const pages = ['Dashboard','Auctions','Products','Users Mgmt','Wallet','Winners','Reports','Profit','Settings'];
+
                     return (
                       <tr key={role} className="hover:bg-slate-800/40">
-                        {/* Role name */}
-                        <td className="p-3">
+                        {/* Role */}
+                        <td className="p-3 sticky left-0 bg-slate-900">
                           <div className="flex items-center gap-2">
-                            <span className={`font-bold capitalize ${isAdmin ? 'text-purple-300' : 'text-white'}`}>{role}</span>
-                            {isAdmin && <span className="text-[10px] bg-purple-500/20 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded font-mono">ADMIN</span>}
+                            <span className={`font-bold capitalize ${isAdmin ? 'text-purple-300' : isCustomer ? 'text-slate-400' : 'text-white'}`}>{role}</span>
+                            {isAdmin    && <span className="text-[10px] bg-purple-500/20 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded font-mono">ADMIN</span>}
+                            {isCustomer && <span className="text-[10px] bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded font-mono">CUSTOMER</span>}
                           </div>
                         </td>
                         {/* User count */}
                         <td className="p-3 text-center">
-                          <span className="bg-slate-800 text-slate-300 font-bold px-2.5 py-1 rounded-full font-mono text-[11px]">
-                            {count} user{count !== 1 ? 's' : ''}
+                          <span className="bg-slate-800 text-slate-300 font-bold px-2 py-0.5 rounded-full font-mono text-[11px]">
+                            {count}
                           </span>
                         </td>
-                        {/* Auctions */}
-                        <td className="p-3 text-center">
-                          {isAdmin
-                            ? <span className="text-emerald-400 font-bold text-[11px]">✓ Full</span>
-                            : <input type="checkbox" defaultChecked={false}
-                                className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-purple-600 focus:ring-purple-500 cursor-pointer" />}
-                        </td>
-                        {/* Payments */}
-                        <td className="p-3 text-center">
-                          {isAdmin
-                            ? <span className="text-emerald-400 font-bold text-[11px]">✓ Full</span>
-                            : <input type="checkbox" defaultChecked={false}
-                                className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-purple-600 focus:ring-purple-500 cursor-pointer" />}
-                        </td>
-                        {/* Audit Logs */}
-                        <td className="p-3 text-center">
-                          {isAdmin
-                            ? <span className="text-emerald-400 font-bold text-[11px]">✓ Full</span>
-                            : <input type="checkbox" defaultChecked={false}
-                                className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-purple-600 focus:ring-purple-500 cursor-pointer" />}
-                        </td>
+                        {/* Page columns */}
+                        {pages.map(page => (
+                          <td key={page} className="p-3 text-center">
+                            {isAdmin ? (
+                              <span className="text-emerald-400 font-bold text-[11px]">✓</span>
+                            ) : isCustomer ? (
+                              <span className="text-slate-700 text-[11px]">—</span>
+                            ) : (
+                              <input
+                                type="checkbox"
+                                defaultChecked={false}
+                                className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                              />
+                            )}
+                          </td>
+                        ))}
                         {/* Winner Override — always locked */}
                         <td className="p-3 text-center bg-slate-950/60">
                           <div className="flex items-center justify-center gap-1">
