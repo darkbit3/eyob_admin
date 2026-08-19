@@ -14,6 +14,33 @@ interface BankAccountItem {
 export default function AdminSettings() {
   const { settings, auctions, updateAuction, updateSystemSettings } = useApp();
 
+  // ── Live roles from DB ────────────────────────────────────────────────────
+  const [roleStats, setRoleStats] = useState<{ role: string; count: number }[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+
+  useEffect(() => {
+    fetchRoleStats();
+  }, []);
+
+  async function fetchRoleStats() {
+    setRolesLoading(true);
+    try {
+      const res = await usersApi.list();
+      const users: any[] = res.data || [];
+      // Group by role, count users per role
+      const roleMap: Record<string, number> = {};
+      users.forEach((u: any) => {
+        const r = u.role || 'customer';
+        roleMap[r] = (roleMap[r] || 0) + 1;
+      });
+      setRoleStats(Object.entries(roleMap).map(([role, count]) => ({ role, count })));
+    } catch {
+      setRoleStats([]);
+    } finally {
+      setRolesLoading(false);
+    }
+  }
+
   const [platformName, setPlatformName] = useState(settings.platformName);
   const [supportEmail, setSupportEmail] = useState(settings.supportEmail);
   const [currency, setCurrency] = useState(settings.currency);
@@ -274,6 +301,7 @@ export default function AdminSettings() {
       setAddUserMsgType('success');
       setNewUserName(''); setNewUserEmail(''); setNewUserPhone(''); setNewUserPassword('');
       setNewUserRole('customer'); setNewUserCustomRole('');
+      fetchRoleStats(); // refresh the matrix
       setTimeout(() => { setShowAddUserModal(false); setAddUserMsg(''); }, 1500);
     } catch (err: any) {
       setAddUserMsg(err?.message || 'Failed to create user.');
@@ -494,63 +522,67 @@ export default function AdminSettings() {
           </div>
 
           <div className="overflow-x-auto border border-slate-800 rounded-xl">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950 text-slate-400 font-semibold uppercase">
-                <tr>
-                  <th className="p-3">Role</th>
-                  <th className="p-3 text-center">Auctions</th>
-                  <th className="p-3 text-center">Users</th>
-                  <th className="p-3 text-center">Payments</th>
-                  <th className="p-3 text-center">Audit Logs</th>
-                  <th className="p-3 text-center text-amber-400">Winner Override</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800 text-slate-300">
-                {permissions.map((p, idx) => (
-                  <tr key={p.role} className="hover:bg-slate-800/40">
-                    <td className="p-3 font-semibold text-white">{p.role}</td>
-                    <td className="p-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={p.manageAuctions}
-                        onChange={() => togglePermission(idx, 'manageAuctions')}
-                        className="rounded border-slate-800 bg-slate-950 text-purple-600 focus:ring-purple-500"
-                      />
-                    </td>
-                    <td className="p-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={p.manageUsers}
-                        onChange={() => togglePermission(idx, 'manageUsers')}
-                        className="rounded border-slate-800 bg-slate-950 text-purple-600 focus:ring-purple-500"
-                      />
-                    </td>
-                    <td className="p-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={p.approvePayments}
-                        onChange={() => togglePermission(idx, 'approvePayments')}
-                        className="rounded border-slate-800 bg-slate-950 text-purple-600 focus:ring-purple-500"
-                      />
-                    </td>
-                    <td className="p-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={p.viewAuditLogs}
-                        onChange={() => togglePermission(idx, 'viewAuditLogs')}
-                        className="rounded border-slate-800 bg-slate-950 text-purple-600 focus:ring-purple-500"
-                      />
-                    </td>
-                    <td className="p-3 text-center bg-slate-950/60">
-                      <div className="flex items-center justify-center gap-1 text-slate-500" title="Winner Override is strictly disabled for all roles.">
-                        <Lock className="w-3.5 h-3.5 text-slate-500" />
-                        <span className="text-[10px] font-mono font-bold text-slate-600">LOCKED</span>
-                      </div>
-                    </td>
+            {rolesLoading ? (
+              <div className="flex items-center justify-center gap-2 p-6 text-slate-400 text-xs">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading roles from database…
+              </div>
+            ) : roleStats.length === 0 ? (
+              <div className="p-6 text-center text-slate-500 text-xs">No users found in the database.</div>
+            ) : (
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-950 text-slate-400 font-semibold uppercase">
+                  <tr>
+                    <th className="p-3">Role</th>
+                    <th className="p-3 text-center">Users Count</th>
+                    <th className="p-3 text-center">Auctions</th>
+                    <th className="p-3 text-center">Payments</th>
+                    <th className="p-3 text-center">Audit Logs</th>
+                    <th className="p-3 text-center text-amber-400">Winner Override</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-800 text-slate-300">
+                  {roleStats.map(({ role, count }) => {
+                    const isAdmin = role === 'admin';
+                    return (
+                      <tr key={role} className="hover:bg-slate-800/40">
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold capitalize ${isAdmin ? 'text-purple-300' : 'text-white'}`}>{role}</span>
+                            {isAdmin && <span className="text-[10px] bg-purple-500/20 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded font-mono">ADMIN</span>}
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className="bg-slate-800 text-slate-300 font-bold px-2.5 py-1 rounded-full font-mono text-[11px]">
+                            {count} user{count !== 1 ? 's' : ''}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          {isAdmin
+                            ? <span className="text-emerald-400 font-bold text-[11px]">✓ Full</span>
+                            : <span className="text-slate-600 text-[11px]">—</span>}
+                        </td>
+                        <td className="p-3 text-center">
+                          {isAdmin
+                            ? <span className="text-emerald-400 font-bold text-[11px]">✓ Full</span>
+                            : <span className="text-slate-600 text-[11px]">—</span>}
+                        </td>
+                        <td className="p-3 text-center">
+                          {isAdmin
+                            ? <span className="text-emerald-400 font-bold text-[11px]">✓ Full</span>
+                            : <span className="text-slate-600 text-[11px]">—</span>}
+                        </td>
+                        <td className="p-3 text-center bg-slate-950/60">
+                          <div className="flex items-center justify-center gap-1">
+                            <Lock className="w-3.5 h-3.5 text-slate-600" />
+                            <span className="text-[10px] font-mono font-bold text-slate-600">LOCKED</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
 
           <div className="p-3 bg-purple-950/40 border border-purple-800/50 rounded-xl text-xs text-purple-300">
