@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { Auction, AuctionStatus, Product } from '../data/mockData';
 import { bidsApi, auctionsApi } from '../utils/api';
+import ImageUploader from '../components/ImageUploader';
 import { useLocation } from 'react-router-dom';
 import {
   Gavel, Search, Plus, Edit2, PauseCircle, PlayCircle, XCircle, ShieldAlert,
@@ -1006,19 +1007,12 @@ export default function AdminAuctions() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Image Thumbnail URL</label>
-                  <input
-                    type="text"
+                  <ImageUploader
                     value={imageUrl}
-                    onChange={e => setImageUrl(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono text-[11px]"
+                    label="Auction Image (uploaded to Cloudinary)"
+                    onUploaded={(url) => setImageUrl(url)}
+                    onRemove={() => setImageUrl('')}
                   />
-                  {imageUrl && (
-                    <div className="mt-2 p-2 bg-slate-950 border border-slate-800 rounded-lg flex items-center gap-3">
-                      <img src={imageUrl} alt="Preview" className="w-12 h-12 object-cover rounded-md" />
-                      <span className="text-[10px] text-slate-400 font-mono">Mock thumbnail preview</span>
-                    </div>
-                  )}
                   {selectedProduct && (
                     <div className="mt-3 p-3 bg-purple-950/40 border border-purple-500/30 rounded-xl flex items-center gap-3">
                       <img

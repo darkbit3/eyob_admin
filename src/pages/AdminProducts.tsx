@@ -527,41 +527,32 @@ export default function AdminProducts() {
 
                 <div>
                   <label className="block text-slate-300 font-semibold mb-1">
-                    Product Images <span className="text-slate-500 font-normal">(at least 1, max 8)</span>
+                    Product Images <span className="text-slate-500 font-normal">(at least 1, max 8 — uploaded to cloud)</span>
                   </label>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {images.map((img, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={img}
-                          onChange={(e) =>
-                            setImages((prev) => prev.map((v, i) => (i === idx ? e.target.value : v)))
-                          }
-                          placeholder="https://..."
-                          className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono text-[11px]"
-                        />
-                        {img.trim() && (
-                          <img src={img} alt="" className="w-8 h-8 object-cover rounded border border-slate-700 flex-shrink-0"
-                            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setImages((prev) => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev)}
-                          disabled={images.length <= 1}
-                          className="px-2 py-1 bg-rose-600/80 hover:bg-rose-600 text-white rounded disabled:opacity-30 text-xs transition-colors"
-                        >
-                          ✕
-                        </button>
+                      <div key={idx} className="flex items-start gap-3 p-3 bg-slate-950/50 border border-slate-800 rounded-xl">
+                        <div className="flex-1">
+                          <ImageUploader
+                            value={img}
+                            label={`Image ${idx + 1}`}
+                            onUploaded={(url) =>
+                              setImages((prev) => prev.map((v, i) => (i === idx ? url : v)))
+                            }
+                            onRemove={() =>
+                              setImages((prev) => prev.length > 1 ? prev.filter((_, i) => i !== idx) : [''])
+                            }
+                          />
+                        </div>
                       </div>
                     ))}
                     <button
                       type="button"
                       onClick={() => images.length < 8 && setImages((prev) => [...prev, ''])}
                       disabled={images.length >= 8}
-                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg disabled:opacity-40 text-xs transition-colors"
+                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg disabled:opacity-40 text-xs transition-colors flex items-center gap-1.5"
                     >
-                      + Add Image URL ({images.length}/8)
+                      + Add Another Image ({images.length}/8)
                     </button>
                   </div>
                 </div>
