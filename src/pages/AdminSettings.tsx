@@ -146,6 +146,7 @@ export default function AdminSettings() {
         max_bid_price: Number(maxBidPrice),
         default_bid_step: Number(defaultBidStep),
         default_bid_per_cost: Number(defaultBidPerCost),
+        max_bids_per_user: Number(defaultBidPerCost),
         maintenance_mode: maintenanceMode,
       });
       updateSystemSettings({
