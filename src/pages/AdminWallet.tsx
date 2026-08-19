@@ -45,6 +45,9 @@ export default function AdminWallet() {
     amount: number;
     credits?: number;
     referenceNumber?: string;
+    description?: string;
+    txType?: string;
+    paymentMethod?: string;
     timestamp: string;
     beforeBalance: number;
     afterBalance: number;
@@ -202,7 +205,10 @@ export default function AdminWallet() {
       userPhone: u?.phone || '—',
       amount: amt,
       credits: item.credits,
-      referenceNumber: item.referenceNumber || item.description?.match(/Ref:\s*(\w+)/i)?.[1] || 'CHAPA-AUTO',
+      referenceNumber: item.referenceNumber || (item.description?.match(/Ref:\s*(\w+)/i)?.[1]) || undefined,
+      description: item.description,
+      txType: (item as any).type,
+      paymentMethod: (item as any).paymentMethod,
       timestamp: item.timestamp || item.created_at || new Date().toISOString(),
       beforeBalance: beforeBal,
       afterBalance: afterBal,
@@ -831,18 +837,40 @@ export default function AdminWallet() {
               </div>
             </div>
 
-            {/* Payment Summary */}
+            {/* Transaction Details */}
             <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-2">
-              <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Payment Details</p>
+              <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Transaction Details</p>
               <div className="grid grid-cols-2 gap-2 text-slate-200 font-mono">
                 <div>
-                  <p className="text-slate-500 text-[10px] font-sans">Payment Amount</p>
-                  <p className="font-black text-emerald-400 text-sm">+{selectedChapaTx.amount.toFixed(2)} ETB</p>
+                  <p className="text-slate-500 text-[10px] font-sans">Amount</p>
+                  <p className={`font-black text-sm ${Number(selectedChapaTx.amount) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {Number(selectedChapaTx.amount) >= 0 ? `+${selectedChapaTx.amount.toFixed(2)}` : selectedChapaTx.amount.toFixed(2)} ETB
+                  </p>
                 </div>
                 <div>
-                  <p className="text-slate-500 text-[10px] font-sans">Gateway Ref Code</p>
-                  <p className="font-bold text-amber-300 text-xs truncate">{selectedChapaTx.referenceNumber}</p>
+                  <p className="text-slate-500 text-[10px] font-sans">Transaction Type</p>
+                  <p className="font-bold text-purple-300 text-xs uppercase truncate">
+                    {selectedChapaTx.txType?.replace(/_/g, ' ') || '—'}
+                  </p>
                 </div>
+                {selectedChapaTx.paymentMethod && (
+                  <div>
+                    <p className="text-slate-500 text-[10px] font-sans">Payment Method</p>
+                    <p className="font-bold text-cyan-300 text-xs">{selectedChapaTx.paymentMethod}</p>
+                  </div>
+                )}
+                {selectedChapaTx.referenceNumber && (
+                  <div>
+                    <p className="text-slate-500 text-[10px] font-sans">Reference / Ref Code</p>
+                    <p className="font-bold text-amber-300 text-xs truncate">{selectedChapaTx.referenceNumber}</p>
+                  </div>
+                )}
+                {selectedChapaTx.description && (
+                  <div className="col-span-2">
+                    <p className="text-slate-500 text-[10px] font-sans">Description</p>
+                    <p className="text-slate-300 text-xs font-sans leading-relaxed">{selectedChapaTx.description}</p>
+                  </div>
+                )}
                 <div className="col-span-2">
                   <p className="text-slate-500 text-[10px] font-sans">Date &amp; Time</p>
                   <p className="text-slate-300 text-xs">{new Date(selectedChapaTx.timestamp).toLocaleString()}</p>
