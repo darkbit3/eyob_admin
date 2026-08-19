@@ -40,6 +40,7 @@ export interface Auction {
   image: string;
   retailValue: number;
   bidPerCost?: number;
+  maxBidsPerUser?: number;
   category: string;
   status: AuctionStatus;
   startTime: string;

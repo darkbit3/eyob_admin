@@ -96,6 +96,7 @@ export default function AdminAuctions() {
         image: a.image_url ?? a.image ?? '',
         retailValue: Number(a.retail_value ?? a.retailValue ?? 0),
         bidPerCost: Number(a.bid_per_cost ?? a.bidPerCost ?? 100),
+        maxBidsPerUser: Number(a.max_bids_per_user ?? a.maxBidsPerUser ?? 0),
         category: a.category,
         status: a.status,
         startTime: a.start_time ?? a.startTime ?? '',
@@ -136,6 +137,7 @@ export default function AdminAuctions() {
   const [category, setCategory] = useState('Electronics');
   const [retailValue, setRetailValue] = useState(50000);
   const [bidPerCost, setBidPerCost] = useState(100);
+  const [maxBidsPerUser, setMaxBidsPerUser] = useState(0);
   const [minBid, setMinBid] = useState(1);
   const [maxBid, setMaxBid] = useState(500);
   const [startTime, setStartTime] = useState(getEatNowString());
@@ -158,6 +160,7 @@ export default function AdminAuctions() {
       setCategory(p.category);
       setRetailValue(p.retailValue);
       setBidPerCost(100);
+      setMaxBidsPerUser(0);
       setMinBid(1);
       setMaxBid(500);
       setImageUrl((p.images && p.images[0]) ?? '');
@@ -178,6 +181,7 @@ export default function AdminAuctions() {
     setCategory('Electronics');
     setRetailValue(50000);
     setBidPerCost(100);
+    setMaxBidsPerUser(0);
     setMinBid(1);
     setMaxBid(500);
     setStartTime('2026-08-10T08:00');
@@ -199,6 +203,7 @@ export default function AdminAuctions() {
     setCategory(a.category);
     setRetailValue(a.retailValue);
     setBidPerCost(a.bidPerCost || 100);
+    setMaxBidsPerUser(a.maxBidsPerUser ?? 0);
     setMinBid(a.minBid);
     setMaxBid(a.maxBid);
     setStartTime(a.startTime.substring(0, 16));
@@ -244,6 +249,7 @@ export default function AdminAuctions() {
       category,
       retail_value: retailValue,
       bid_per_cost: bidPerCost,
+      max_bids_per_user: Math.max(0, Math.floor(Number(maxBidsPerUser) || 0)),
       min_bid: minBid,
       max_bid: maxBid,
       start_time: startTime,
@@ -261,6 +267,7 @@ export default function AdminAuctions() {
           image: imageUrl,
           retailValue,
           bidPerCost,
+          maxBidsPerUser,
           minBid,
           maxBid,
           startTime,
@@ -277,6 +284,7 @@ export default function AdminAuctions() {
           image: imageUrl,
           retailValue,
           bidPerCost,
+          maxBidsPerUser,
           minBid,
           maxBid,
           startTime,

@@ -112,6 +112,7 @@ function apiToAuction(a: any): Auction {
     image: a.image_url ?? a.image ?? a.imageUrl ?? '',
     retailValue: Number(a.retail_value ?? a.retailValue ?? 0),
     bidPerCost: Number(a.bid_per_cost ?? a.bidPerCost ?? 100),
+    maxBidsPerUser: Number(a.max_bids_per_user ?? a.maxBidsPerUser ?? 0),
     category: a.category,
     status: status as AuctionStatus,
     startTime,
@@ -327,6 +328,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         image_url: auctionData.image,
         retail_value: auctionData.retailValue,
         bid_per_cost: auctionData.bidPerCost ?? 100,
+        max_bids_per_user: auctionData.maxBidsPerUser ?? 0,
         category: auctionData.category,
         status: auctionData.status,
         start_time: auctionData.startTime,
@@ -356,6 +358,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (updates.image !== undefined) payload.image_url = updates.image;
       if (updates.retailValue !== undefined) payload.retail_value = updates.retailValue;
       if (updates.bidPerCost !== undefined) payload.bid_per_cost = updates.bidPerCost;
+      if (updates.maxBidsPerUser !== undefined) payload.max_bids_per_user = Math.max(0, Math.floor(Number(updates.maxBidsPerUser) || 0));
       if (updates.category !== undefined) payload.category = updates.category;
       if (updates.status !== undefined) payload.status = updates.status;
       if (updates.startTime !== undefined) payload.start_time = updates.startTime;
