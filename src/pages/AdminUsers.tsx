@@ -87,8 +87,7 @@ export default function AdminUsers() {
     return matchesSearch && matchesRole && matchesStatus;
   });
 
-  const userBids = selectedUser ? bids.filter(b => b.bidderId === selectedUser.id) : [];
-  const userTx = selectedUser ? transactions.filter(t => t.userId === selectedUser.id) : [];
+
 
   return (
     <div className="space-y-6">
