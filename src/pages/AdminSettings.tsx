@@ -20,6 +20,9 @@ export default function AdminSettings() {
   const [minBidPrice, setMinBidPrice] = useState(settings.minBidPrice);
   const [maxBidPrice, setMaxBidPrice] = useState(settings.maxBidPrice);
   const [defaultBidStep, setDefaultBidStep] = useState(settings.defaultBidStep);
+  const [defaultBidPerCost, setDefaultBidPerCost] = useState<number>(
+    (settings as any).defaultBidPerCost ?? 100
+  );
   const [maintenanceMode, setMaintenanceMode] = useState(settings.maintenanceMode);
 
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -142,6 +145,7 @@ export default function AdminSettings() {
         min_bid_price: Number(minBidPrice),
         max_bid_price: Number(maxBidPrice),
         default_bid_step: Number(defaultBidStep),
+        default_bid_per_cost: Number(defaultBidPerCost),
         maintenance_mode: maintenanceMode,
       });
       updateSystemSettings({
@@ -151,6 +155,7 @@ export default function AdminSettings() {
         minBidPrice: Number(minBidPrice),
         maxBidPrice: Number(maxBidPrice),
         defaultBidStep: Number(defaultBidStep),
+        defaultBidPerCost: Number(defaultBidPerCost),
         maintenanceMode,
       });
       setSaveSuccess(true);
@@ -307,6 +312,19 @@ export default function AdminSettings() {
                   value={defaultBidStep}
                   onChange={e => setDefaultBidStep(Number(e.target.value))}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Default Bid Per Cost (ETB)</label>
+                <p className="text-[11px] text-slate-500 mb-1.5">Entry fee charged per bid placed. Applied to new auctions by default.</p>
+                <input
+                  type="number"
+                  min={1}
+                  value={defaultBidPerCost}
+                  onChange={e => setDefaultBidPerCost(Number(e.target.value))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
+                  placeholder="e.g. 100"
                 />
               </div>
             </div>
