@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Product } from '../data/mockData';
 import CountdownTimer from '../components/CountdownTimer';
+import ImageUploader from '../components/ImageUploader';
 import { Package, Search, Plus, Edit2, Trash2, Link2, CheckCircle, XCircle, Loader2, CheckSquare, Square, Gavel } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ADMIN_ROUTES } from '../utils/routes';
