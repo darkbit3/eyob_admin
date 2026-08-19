@@ -38,6 +38,24 @@ export default function AdminWallet() {
   const [adjustState, setAdjustState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [adjustMsg, setAdjustMsg] = useState('');
 
+  function normalizePaymentQueueItem(item: any): PaymentQueueItem {
+    return {
+      id: item.id,
+      userId: item.user_id ?? item.userId ?? '',
+      userName: item.user_name ?? item.userName ?? 'Customer',
+      userEmail: item.user_email ?? item.userEmail ?? '',
+      userPhoto: item.photo_url ?? item.userPhoto ?? undefined,
+      amount: Number(item.amount ?? 0),
+      credits: Number(item.credits ?? 0),
+      paymentMethod: item.payment_method ?? item.paymentMethod ?? 'Manual',
+      referenceNumber: item.reference_number ?? item.referenceNumber ?? '',
+      receiptImage: item.receipt_image ?? item.receiptImage ?? '',
+      timestamp: item.created_at ?? item.timestamp ?? new Date().toISOString(),
+      status: item.status ?? 'pending',
+      notes: item.notes ?? '',
+    };
+  }
+
   const [selectedChapaTx, setSelectedChapaTx] = useState<{
     userName: string;
     userEmail: string;
@@ -79,7 +97,7 @@ export default function AdminWallet() {
         timestamp: t.timestamp || t.created_at || t.createdAt || new Date().toISOString(),
         amount: Number(t.amount || 0),
       })));
-      setPaymentQueue(qRes.data || []);
+      setPaymentQueue((qRes.data || []).map(normalizePaymentQueueItem));
       setUsers(uRes.data.map((u: any) => ({
         id: u.id,
         name: u.name,
@@ -116,7 +134,7 @@ export default function AdminWallet() {
         timestamp: t.timestamp || t.created_at || t.createdAt || new Date().toISOString(),
         amount: Number(t.amount || 0),
       })));
-      setPaymentQueue(qRes.data || []);
+      setPaymentQueue((qRes.data || []).map(normalizePaymentQueueItem));
 
       setTimeout(() => setQueueActionState(null), 2200);
     } catch (err: any) {
@@ -161,7 +179,7 @@ export default function AdminWallet() {
 
         const qRes = await walletApi.queue();
         if (!active) return;
-        setPaymentQueue(qRes.data || []);
+        setPaymentQueue((qRes.data || []).map(normalizePaymentQueueItem));
       } catch (_err) {
         // silently fallback to context state if unauthenticated or offline
       }
@@ -629,7 +647,7 @@ export default function AdminWallet() {
                       })));
 
                       const qRes = await walletApi.queue();
-                      setPaymentQueue(qRes.data);
+                      setPaymentQueue((qRes.data || []).map(normalizePaymentQueueItem));
                     } catch (_e) {
                       // silently ignore refresh errors
                     } finally {
@@ -931,14 +949,36 @@ export default function AdminWallet() {
             </div>
 
             <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-950">
-              <img src={previewItem.receiptImage} alt="Receipt Slip" className="w-full h-56 object-cover" />
+              <img
+                src={previewItem.receiptImage || 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400'}
+                alt={`Receipt from ${previewItem.userName}`}
+                className="w-full h-56 object-contain bg-slate-950"
+                onError={event => {
+                  (event.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400';
+                }}
+              />
+            </div>
+
+            <div className="flex items-center gap-3 rounded-xl bg-slate-950 border border-slate-800 p-3">
+              {previewItem.userPhoto ? (
+                <img src={previewItem.userPhoto} alt={previewItem.userName} className="w-10 h-10 rounded-full object-cover" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-purple-950 text-purple-300 flex items-center justify-center text-sm font-black">
+                  {previewItem.userName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <p className="text-white text-sm font-bold">{previewItem.userName}</p>
+                <p className="text-slate-400 text-[11px]">{previewItem.userEmail || 'Customer payment submission'}</p>
+              </div>
             </div>
 
             <div className="text-xs space-y-1 text-slate-300 font-mono">
-              <p><span className="text-slate-500">Payer:</span> {previewItem.userName}</p>
               <p><span className="text-slate-500">Method:</span> {previewItem.paymentMethod}</p>
-              <p><span className="text-slate-500">Ref Code:</span> {previewItem.referenceNumber}</p>
+              <p><span className="text-slate-500">Transaction ID:</span> {previewItem.referenceNumber || previewItem.id}</p>
               <p><span className="text-slate-500">Amount:</span> {previewItem.amount} ETB ({previewItem.credits} Credits)</p>
+              <p><span className="text-slate-500">Submitted:</span> {new Date(previewItem.timestamp).toLocaleString()}</p>
+              {previewItem.notes && <p><span className="text-slate-500">Notes:</span> {previewItem.notes}</p>}
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t border-slate-800 pt-3">

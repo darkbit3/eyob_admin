@@ -83,6 +83,7 @@ export interface PaymentQueueItem {
   userId: string;
   userName: string;
   userEmail: string;
+  userPhoto?: string;
   amount: number;
   credits: number;
   paymentMethod: 'Telebirr' | 'CBE Birr' | 'Bank Transfer' | 'Chapa';
