@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Settings, Shield, Save, CheckCircle2, Lock, ToggleLeft, ToggleRight, XCircle, Building2, Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
-import { settingsApi } from '../utils/api';
+import { settingsApi, usersApi } from '../utils/api';
 
 interface BankAccountItem {
   id: string;
