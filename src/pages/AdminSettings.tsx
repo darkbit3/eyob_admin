@@ -249,6 +249,36 @@ export default function AdminSettings() {
     }));
   }
 
+  async function handleAddUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newUserName || !newUserEmail || !newUserPhone || !newUserPassword) {
+      setAddUserMsg('All fields are required.');
+      setAddUserMsgType('error');
+      return;
+    }
+    setAddUserLoading(true);
+    setAddUserMsg('');
+    try {
+      await usersApi.createUser({
+        name: newUserName,
+        email: newUserEmail,
+        phone: newUserPhone,
+        password: newUserPassword,
+        role: newUserRole,
+      });
+      setAddUserMsg(`✅ User "${newUserName}" created successfully.`);
+      setAddUserMsgType('success');
+      setNewUserName(''); setNewUserEmail(''); setNewUserPhone(''); setNewUserPassword('');
+      setNewUserRole('customer');
+      setTimeout(() => { setShowAddUserModal(false); setAddUserMsg(''); }, 1500);
+    } catch (err: any) {
+      setAddUserMsg(err?.message || 'Failed to create user.');
+      setAddUserMsgType('error');
+    } finally {
+      setAddUserLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Toast Alert */}
