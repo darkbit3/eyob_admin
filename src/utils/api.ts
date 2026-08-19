@@ -145,6 +145,15 @@ export const bidsApi = {
   forAuction: (auctionId: string) =>
     request<{ success: boolean; data: any[] }>(`/bids/auction/${auctionId}`),
   all: () => request<{ success: boolean; data: any[] }>('/bids'),
+  update: (bidId: string, amount: number) =>
+    request<{ success: boolean; message: string; data: any }>(`/bids/${bidId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ amount }),
+    }),
+  cancel: (bidId: string) =>
+    request<{ success: boolean; message: string; data?: any }>(`/bids/${bidId}`, {
+      method: 'DELETE',
+    }),
 };
 
 // ── Wallet ────────────────────────────────────────────────────────────────────
