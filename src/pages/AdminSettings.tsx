@@ -23,6 +23,7 @@ export default function AdminSettings() {
   const [defaultBidPerCost, setDefaultBidPerCost] = useState<number>(
     (settings as any).defaultBidPerCost ?? 100
   );
+  const [maxBidsPerUser, setMaxBidsPerUser] = useState<number>(settings.maxBidsPerUser ?? 0);
   const [maintenanceMode, setMaintenanceMode] = useState(settings.maintenanceMode);
 
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -48,6 +49,10 @@ export default function AdminSettings() {
   useEffect(() => {
     fetchBankAccounts();
   }, []);
+
+  useEffect(() => {
+    setMaxBidsPerUser(settings.maxBidsPerUser ?? 0);
+  }, [settings.maxBidsPerUser]);
 
   async function fetchBankAccounts() {
     setLoadingAccounts(true);
@@ -146,7 +151,6 @@ export default function AdminSettings() {
         max_bid_price: Number(maxBidPrice),
         default_bid_step: Number(defaultBidStep),
         default_bid_per_cost: Number(defaultBidPerCost),
-        max_bids_per_user: Number(defaultBidPerCost),
         maintenance_mode: maintenanceMode,
       });
       updateSystemSettings({
@@ -157,12 +161,31 @@ export default function AdminSettings() {
         maxBidPrice: Number(maxBidPrice),
         defaultBidStep: Number(defaultBidStep),
         defaultBidPerCost: Number(defaultBidPerCost),
+        maxBidsPerUser,
         maintenanceMode,
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
     } catch (err: any) {
       setSaveError(err.message || 'Failed to save settings. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveBidLimit() {
+    const limit = Math.max(0, Math.floor(Number(maxBidsPerUser) || 0));
+    setMaxBidsPerUser(limit);
+    setSaving(true);
+    setSaveError('');
+    setSaveSuccess(false);
+    try {
+      await settingsApi.update({ max_bids_per_user: limit });
+      updateSystemSettings({ maxBidsPerUser: limit });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to save bid limit. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -479,15 +502,15 @@ export default function AdminSettings() {
             <input
               type="number"
               min={0}
-              value={defaultBidPerCost}
-              onChange={e => setDefaultBidPerCost(Number(e.target.value))}
+              value={maxBidsPerUser}
+              onChange={e => setMaxBidsPerUser(Number(e.target.value))}
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500 font-mono text-sm"
               placeholder="e.g. 3  (0 = unlimited)"
             />
           </div>
           <div>
             <button
-              onClick={handleSaveSettings as any}
+              onClick={handleSaveBidLimit}
               disabled={saving}
               className="flex items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-amber-900/30 transition-all disabled:opacity-50"
             >

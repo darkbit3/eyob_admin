@@ -132,6 +132,7 @@ export interface SystemSettings {
   maxBidPrice: number;
   defaultBidStep: number;
   defaultBidPerCost?: number;
+  maxBidsPerUser: number;
   autoWinnerVerification: boolean;
   maintenanceMode: boolean;
 }
@@ -145,6 +146,7 @@ export const initialSettings: SystemSettings = {
   maxBidPrice: 5000,
   defaultBidStep: 1,
   defaultBidPerCost: 100,
+  maxBidsPerUser: 0,
   autoWinnerVerification: true,
   maintenanceMode: false,
 };

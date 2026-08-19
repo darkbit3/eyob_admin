@@ -203,6 +203,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             minBidPrice: Number(res.data.min_bid_price ?? res.data.minBidPrice ?? prev.minBidPrice),
             maxBidPrice: Number(res.data.max_bid_price ?? res.data.maxBidPrice ?? prev.maxBidPrice),
             defaultBidStep: Number(res.data.default_bid_step ?? res.data.defaultBidStep ?? prev.defaultBidStep),
+            maxBidsPerUser: Number(res.data.max_bids_per_user ?? res.data.maxBidsPerUser ?? prev.maxBidsPerUser),
             autoWinnerVerification: res.data.auto_winner_verification ?? res.data.autoWinnerVerification ?? prev.autoWinnerVerification,
             maintenanceMode: res.data.maintenance_mode ?? res.data.maintenanceMode ?? prev.maintenanceMode,
           } }));
