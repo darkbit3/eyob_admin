@@ -44,6 +44,7 @@ interface AppContextType {
   pauseAuction: (id: string) => Promise<void>;
   resumeAuction: (id: string) => Promise<void>;
   cancelAuction: (id: string) => Promise<void>;
+  deleteAuction: (id: string) => Promise<void>;
   addProduct: (product: Omit<Product, 'id' | 'createdAt'>) => Promise<void>;
   updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
@@ -433,6 +434,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function deleteAuction(id: string) {
+    try {
+      const target = auctions.find(a => a.id === id);
+      await auctionsApi.delete(id);
+      setAuctions(prev => prev.filter(a => a.id !== id));
+      if (target?.productId) {
+        setProducts(prev => prev.map(p => p.id === target.productId ? {
+          ...p,
+          linkedAuctionId: undefined,
+          linkedAuctionStatus: undefined,
+          linkedAuctionEndTime: undefined
+        } : p));
+      }
+      addAuditLog('Deleted Auction', target?.title || id, 'Auction deleted and all user bids & entry fees refunded to wallet.');
+    } catch (err: any) {
+      console.error('Failed to delete auction', err?.message || err);
+      alert(`Failed to delete auction: ${err?.message || err}`);
+      throw err;
+    }
+  }
+
   async function addProduct(prodData: Omit<Product, 'id' | 'createdAt'>) {
     try {
       const imgs = Array.isArray(prodData.images) && prodData.images.length ? prodData.images : [];
@@ -623,6 +645,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pauseAuction,
       resumeAuction,
       cancelAuction,
+      deleteAuction,
       addProduct,
       updateProduct,
       deleteProduct,

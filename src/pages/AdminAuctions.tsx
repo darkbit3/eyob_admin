@@ -6,7 +6,7 @@ import ImageUploader from '../components/ImageUploader';
 import { useLocation } from 'react-router-dom';
 import {
   Gavel, Search, Plus, Edit2, PauseCircle, PlayCircle, XCircle, ShieldAlert,
-  ChevronDown, ChevronUp, Users, Trophy, CheckCircle, Loader2, RefreshCw, Package, CheckSquare, Square
+  ChevronDown, ChevronUp, Users, Trophy, CheckCircle, Loader2, RefreshCw, Package, CheckSquare, Square, Trash2, CornerDownLeft
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ function getEatNowString(offsetMinutes = 0): string {
 }
 
 export default function AdminAuctions() {
-  const { auctions, products, createAuction, updateAuction, pauseAuction, resumeAuction, cancelAuction, setAuctions } = useApp();
+  const { auctions, products, createAuction, updateAuction, pauseAuction, resumeAuction, cancelAuction, deleteAuction, setAuctions } = useApp();
   const location = useLocation();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -47,6 +47,11 @@ export default function AdminAuctions() {
 
   const [showDrawer, setShowDrawer] = useState(false);
   const [editingAuction, setEditingAuction] = useState<Auction | null>(null);
+
+  // ── Bid Edit & Delete Modal State ─────────────────────────────────────────
+  const [editingBid, setEditingBid] = useState<{ id: string; bidderName: string; amount: number; auctionId: string } | null>(null);
+  const [editBidAmount, setEditBidAmount] = useState<number>(0);
+  const [deletingBid, setDeletingBid] = useState<{ id: string; bidderName: string; amount: number; auctionId: string } | null>(null);
 
   // ── Multi-select state ───────────────────────────────────────────────────
   const [selectedAuctionIds, setSelectedAuctionIds] = useState<string[]>([]);
@@ -145,9 +150,89 @@ export default function AdminAuctions() {
   const [imageUrl, setImageUrl] = useState('https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=600&h=400&fit=crop');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [confirmActionModal, setConfirmActionModal] = useState<{
-    type: 'pause' | 'resume' | 'cancel';
+    type: 'pause' | 'resume' | 'cancel' | 'delete';
     auction: Auction;
   } | null>(null);
+
+  // ── Bid Action Handlers ───────────────────────────────────────────────────
+  async function handleBidEditSubmit() {
+    if (!editingBid) return;
+    const amt = Number(editBidAmount);
+    if (isNaN(amt) || amt <= 0) {
+      alert('Please enter a valid positive bid amount.');
+      return;
+    }
+    setActionState('loading');
+    setActionMsg(`Updating bid to ${amt} ETB & adjusting wallet balance...`);
+    const { id: bidId, auctionId } = editingBid;
+    setEditingBid(null);
+    try {
+      await bidsApi.update(bidId, amt);
+      fetchBids(auctionId, false);
+      manualRefresh();
+      setActionState('success');
+      setActionMsg('Bid updated successfully! Balance & ledger updated.');
+    } catch (err: any) {
+      setActionState('error');
+      setActionMsg(err?.message || 'Failed to update bid.');
+    } finally {
+      setTimeout(() => setActionState('idle'), 2500);
+    }
+  }
+
+  async function handleBidDeleteConfirmed() {
+    if (!deletingBid) return;
+    setActionState('loading');
+    setActionMsg(`Deleting bid & refunding ${deletingBid.amount} ETB to user wallet...`);
+    const { id: bidId, auctionId } = deletingBid;
+    setDeletingBid(null);
+    try {
+      await bidsApi.cancel(bidId);
+      fetchBids(auctionId, false);
+      manualRefresh();
+      setActionState('success');
+      setActionMsg(`Bid deleted & ${deletingBid.amount} ETB refunded to user wallet!`);
+    } catch (err: any) {
+      setActionState('error');
+      setActionMsg(err?.message || 'Failed to delete bid.');
+    } finally {
+      setTimeout(() => setActionState('idle'), 2500);
+    }
+  }
+
+  async function executeConfirmedAction() {
+    if (!confirmActionModal) return;
+    const { type, auction } = confirmActionModal;
+
+    setActionState('loading');
+    setActionMsg(
+      type === 'delete'
+        ? `Deleting "${auction.title}" & refunding all bids/entry fees...`
+        : `Processing ${type} action on "${auction.title}"...`
+    );
+    setConfirmActionModal(null);
+
+    try {
+      if (type === 'pause') await pauseAuction(auction.id);
+      if (type === 'resume') await resumeAuction(auction.id);
+      if (type === 'cancel') await cancelAuction(auction.id);
+      if (type === 'delete') {
+        await deleteAuction(auction.id);
+      }
+
+      setActionState('success');
+      setActionMsg(
+        type === 'delete'
+          ? 'Auction deleted & all active bids/entry fees refunded to balances!'
+          : `Auction ${type}d successfully!`
+      );
+    } catch (error: any) {
+      setActionState('error');
+      setActionMsg(error?.message || `Failed to ${type} auction.`);
+    } finally {
+      setTimeout(() => setActionState('idle'), 2500);
+    }
+  }
 
   // ── Pre-fill from Products page navigation ────────────────────────────────
   useEffect(() => {
@@ -312,28 +397,7 @@ export default function AdminAuctions() {
     }
   }
 
-  async function executeConfirmedAction() {
-    if (!confirmActionModal) return;
-    const { type, auction } = confirmActionModal;
 
-    setActionState('loading');
-    setActionMsg(`Processing ${type} action on "${auction.title}"...`);
-    setConfirmActionModal(null);
-
-    try {
-      if (type === 'pause') await pauseAuction(auction.id);
-      if (type === 'resume') await resumeAuction(auction.id);
-      if (type === 'cancel') await cancelAuction(auction.id);
-
-      setActionState('success');
-      setActionMsg(`Auction ${type}d successfully!`);
-    } catch (error: any) {
-      setActionState('error');
-      setActionMsg(error?.message || `Failed to ${type} auction.`);
-    } finally {
-      setTimeout(() => setActionState('idle'), 1800);
-    }
-  }
 
   const filtered = auctions.filter(a => {
     const matchesSearch = a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -744,6 +808,14 @@ export default function AdminAuctions() {
                           >
                             <XCircle className="w-3.5 h-3.5" />
                           </button>
+
+                          <button
+                            onClick={e => { e.stopPropagation(); setConfirmActionModal({ type: 'delete', auction: a }); }}
+                            className="p-1.5 rounded-md transition-colors text-rose-500 hover:bg-rose-950/50 hover:text-rose-300"
+                            title="Delete Auction (Refund All Bids & Entry Fees)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -791,6 +863,7 @@ export default function AdminAuctions() {
                                     <th className="px-4 py-2.5">Bid Amount</th>
                                     <th className="px-4 py-2.5">Time</th>
                                     <th className="px-4 py-2.5">Status</th>
+                                    <th className="px-4 py-2.5 text-right">Actions</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800/60">
@@ -849,6 +922,31 @@ export default function AdminAuctions() {
                                               <CheckCircle className="w-3 h-3" /> UNIQUE
                                             </span>
                                           )}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right">
+                                          <div className="flex items-center justify-end gap-1.5">
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditingBid({ id: b.id, bidderName: b.bidderName || b.maskedBidderId, amount: b.amount, auctionId: a.id });
+                                                setEditBidAmount(b.amount);
+                                              }}
+                                              className="p-1 text-slate-400 hover:text-purple-300 hover:bg-slate-700/50 rounded transition-colors"
+                                              title="Edit Bid Amount (Adjusts Balance & History)"
+                                            >
+                                              <Edit2 className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setDeletingBid({ id: b.id, bidderName: b.bidderName || b.maskedBidderId, amount: b.amount, auctionId: a.id });
+                                              }}
+                                              className="p-1 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded transition-colors"
+                                              title="Delete Bid & Refund Amount to Balance"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                          </div>
                                         </td>
                                       </tr>
                                     );
@@ -1107,12 +1205,12 @@ export default function AdminAuctions() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl">
-                <ShieldAlert className="w-6 h-6" />
+              <div className={`p-3 rounded-xl ${confirmActionModal.type === 'delete' ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                {confirmActionModal.type === 'delete' ? <Trash2 className="w-6 h-6" /> : <ShieldAlert className="w-6 h-6" />}
               </div>
               <div>
                 <h3 className="text-base font-bold text-white uppercase tracking-wider">
-                  Confirm {confirmActionModal.type} Action
+                  Confirm {confirmActionModal.type === 'delete' ? 'Permanent Delete & Full Refund' : `${confirmActionModal.type} Action`}
                 </h3>
                 <p className="text-slate-400 text-xs mt-0.5">
                   Target: <span className="text-white font-semibold">{confirmActionModal.auction.title}</span>
@@ -1120,9 +1218,22 @@ export default function AdminAuctions() {
               </div>
             </div>
 
-            <p className="text-xs text-slate-300">
-              Are you sure you want to {confirmActionModal.type} this auction? All active bidder updates will be synchronized instantly across the platform.
-            </p>
+            {confirmActionModal.type === 'delete' ? (
+              <div className="space-y-2 text-xs text-slate-300 bg-rose-950/30 border border-rose-500/30 rounded-xl p-3">
+                <p className="font-bold text-rose-300">⚠️ Critical Action:</p>
+                <p>Deleting this auction will automatically:</p>
+                <ul className="list-disc list-inside space-y-1 text-slate-300 font-mono text-[11px]">
+                  <li>Refund all placed bids to players' wallets (+ETB)</li>
+                  <li>Refund all unlocked entry fees to players</li>
+                  <li>Deduct the refunded revenue from admin balance</li>
+                  <li>Log complete transaction records to wallet history</li>
+                </ul>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-300">
+                Are you sure you want to {confirmActionModal.type} this auction? All active bidder updates will be synchronized instantly across the platform.
+              </p>
+            )}
 
             <div className="flex items-center justify-end gap-2 border-t border-slate-800 pt-3">
               <button
@@ -1133,9 +1244,119 @@ export default function AdminAuctions() {
               </button>
               <button
                 onClick={executeConfirmedAction}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs rounded-lg font-semibold shadow-lg shadow-amber-900/40"
+                className={`px-4 py-2 text-white text-xs rounded-lg font-semibold shadow-lg ${
+                  confirmActionModal.type === 'delete'
+                    ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-900/40'
+                    : 'bg-amber-600 hover:bg-amber-500 shadow-amber-900/40'
+                }`}
               >
-                Proceed & Confirm
+                {confirmActionModal.type === 'delete' ? 'Delete Auction & Refund All' : 'Proceed & Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT BID MODAL */}
+      {editingBid && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+                  <Edit2 className="w-4 h-4 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Edit Bid Amount</h3>
+                  <p className="text-[10px] text-slate-400">Bidder: <strong className="text-purple-300">{editingBid.bidderName}</strong></p>
+                </div>
+              </div>
+              <button onClick={() => setEditingBid(null)} className="text-slate-400 hover:text-white font-bold">✕</button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
+                <span className="text-[10px] uppercase text-slate-500 font-semibold font-mono">Current Bid Amount</span>
+                <p className="text-sm font-bold font-mono text-white">{editingBid.amount.toFixed(1)} ETB</p>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 text-xs font-semibold mb-1">New Bid Amount (ETB)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  value={editBidAmount}
+                  onChange={(e) => setEditBidAmount(Number(e.target.value))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white font-mono text-base focus:outline-none focus:border-purple-500"
+                  placeholder="e.g. 25.5"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Changing the bid will adjust the bidder's wallet balance, update the transaction history ledger, and re-calculate the lowest unique winner.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-800 pt-3">
+              <button
+                type="button"
+                onClick={() => setEditingBid(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBidEditSubmit}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded-xl font-bold shadow-lg shadow-purple-900/40"
+              >
+                Update Bid & Adjust Balance
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE BID MODAL */}
+      {deletingBid && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-500/10 text-rose-400 rounded-xl border border-rose-500/20">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Delete Bid & Refund</h3>
+                <p className="text-slate-400 text-xs mt-0.5">
+                  Bidder: <span className="text-white font-semibold">{deletingBid.bidderName}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1.5 text-xs">
+              <div className="flex justify-between items-center text-slate-300">
+                <span>Bid Amount to Refund:</span>
+                <span className="font-mono font-bold text-emerald-400">+{deletingBid.amount.toFixed(1)} ETB</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                The exact amount of <strong>{deletingBid.amount} ETB</strong> will be immediately credited back to the user's wallet, recorded in the transaction history ledger, and removed from the auction.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-800 pt-3">
+              <button
+                type="button"
+                onClick={() => setDeletingBid(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBidDeleteConfirmed}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs rounded-xl font-bold shadow-lg shadow-rose-900/40"
+              >
+                Confirm Delete & Refund
               </button>
             </div>
           </div>
