@@ -92,6 +92,19 @@ function apiToProduct(p: any): Product {
 }
 
 function apiToAuction(a: any): Auction {
+  const endTime   = a.end_time   ?? a.endTime   ?? '';
+  const startTime = a.start_time ?? a.startTime ?? '';
+  const dbStatus  = a.status as string;
+
+  // Correct stale status based on actual times
+  let status = dbStatus;
+  const now = Date.now();
+  if (endTime && new Date(endTime).getTime() < now && dbStatus === 'active') {
+    status = 'closed';
+  } else if (startTime && new Date(startTime).getTime() > now && dbStatus === 'active') {
+    status = 'upcoming';
+  }
+
   return {
     id: a.id,
     title: a.title,
@@ -100,9 +113,9 @@ function apiToAuction(a: any): Auction {
     retailValue: Number(a.retail_value ?? a.retailValue ?? 0),
     bidPerCost: Number(a.bid_per_cost ?? a.bidPerCost ?? 100),
     category: a.category,
-    status: a.status,
-    startTime: a.start_time ?? a.startTime ?? '',
-    endTime: a.end_time ?? a.endTime ?? '',
+    status,
+    startTime,
+    endTime,
     minBid: Number(a.min_bid ?? a.minBid ?? 1),
     maxBid: Number(a.max_bid ?? a.maxBid ?? 500),
     totalParticipants: Number(a.total_participants ?? a.totalParticipants ?? 0),

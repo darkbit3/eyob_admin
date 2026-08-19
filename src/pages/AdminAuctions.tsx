@@ -124,8 +124,8 @@ export default function AdminAuctions() {
   const [bidPerCost, setBidPerCost] = useState(100);
   const [minBid, setMinBid] = useState(1);
   const [maxBid, setMaxBid] = useState(500);
-  const [startTime, setStartTime] = useState('2026-08-10T08:00');
-  const [endTime, setEndTime] = useState('2026-08-20T20:00');
+  const [startTime, setStartTime] = useState(getEatNowString());
+  const [endTime, setEndTime] = useState(getEatNowString(7 * 24 * 60));
   const [imageUrl, setImageUrl] = useState('https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=600&h=400&fit=crop');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [confirmActionModal, setConfirmActionModal] = useState<{
@@ -149,11 +149,8 @@ export default function AdminAuctions() {
       setImageUrl((p.images && p.images[0]) ?? '');
       setProductId(p.id);
       setSelectedProduct(p);
-      // Default dates: start now, end 10 days from now
-      const now = new Date();
-      const end = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000);
-      setStartTime(now.toISOString().substring(0, 16));
-      setEndTime(end.toISOString().substring(0, 16));
+      setStartTime(getEatNowString());
+      setEndTime(getEatNowString(7 * 24 * 60));
       setShowDrawer(true);
       // Clear the state so refreshing doesn't re-open
       window.history.replaceState({}, '');
