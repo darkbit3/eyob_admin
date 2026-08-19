@@ -38,7 +38,8 @@ export default function AdminSettings() {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserRole, setNewUserRole] = useState<'admin' | 'customer'>('customer');
+  const [newUserRole, setNewUserRole] = useState<'admin' | 'customer' | 'other'>('customer');
+  const [newUserCustomRole, setNewUserCustomRole] = useState('');
   const [addUserLoading, setAddUserLoading] = useState(false);
   const [addUserMsg, setAddUserMsg] = useState('');
   const [addUserMsgType, setAddUserMsgType] = useState<'success' | 'error'>('success');
@@ -259,17 +260,20 @@ export default function AdminSettings() {
     setAddUserLoading(true);
     setAddUserMsg('');
     try {
+      const resolvedRole = newUserRole === 'other'
+        ? (newUserCustomRole.trim() || 'customer')
+        : newUserRole;
       await usersApi.createUser({
         name: newUserName,
         email: newUserEmail,
         phone: newUserPhone,
         password: newUserPassword,
-        role: newUserRole,
+        role: resolvedRole,
       });
       setAddUserMsg(`✅ User "${newUserName}" created successfully.`);
       setAddUserMsgType('success');
       setNewUserName(''); setNewUserEmail(''); setNewUserPhone(''); setNewUserPassword('');
-      setNewUserRole('customer');
+      setNewUserRole('customer'); setNewUserCustomRole('');
       setTimeout(() => { setShowAddUserModal(false); setAddUserMsg(''); }, 1500);
     } catch (err: any) {
       setAddUserMsg(err?.message || 'Failed to create user.');
@@ -794,11 +798,21 @@ export default function AdminSettings() {
               </div>
               <div>
                 <label className="block text-slate-300 font-semibold mb-1">Role</label>
-                <select value={newUserRole} onChange={e => setNewUserRole(e.target.value as 'admin' | 'customer')}
+                <select value={newUserRole} onChange={e => setNewUserRole(e.target.value as 'admin' | 'customer' | 'other')}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500">
                   <option value="customer">Customer</option>
                   <option value="admin">Admin</option>
+                  <option value="other">Other (Custom)</option>
                 </select>
+                {newUserRole === 'other' && (
+                  <input
+                    type="text"
+                    value={newUserCustomRole}
+                    onChange={e => setNewUserCustomRole(e.target.value)}
+                    placeholder="Enter custom role name (e.g. moderator)"
+                    className="w-full mt-2 bg-slate-950 border border-purple-500/50 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
+                  />
+                )}
               </div>
 
               {addUserMsg && (
