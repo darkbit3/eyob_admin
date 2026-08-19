@@ -12,7 +12,7 @@ interface BankAccountItem {
 }
 
 export default function AdminSettings() {
-  const { settings, updateSystemSettings } = useApp();
+  const { settings, auctions, updateAuction, updateSystemSettings } = useApp();
 
   const [platformName, setPlatformName] = useState(settings.platformName);
   const [supportEmail, setSupportEmail] = useState(settings.supportEmail);
@@ -24,6 +24,8 @@ export default function AdminSettings() {
     (settings as any).defaultBidPerCost ?? 100
   );
   const [maxBidsPerUser, setMaxBidsPerUser] = useState<number>(settings.maxBidsPerUser ?? 0);
+  const [selectedAuctionId, setSelectedAuctionId] = useState('');
+  const [auctionBidLimit, setAuctionBidLimit] = useState(0);
   const [maintenanceMode, setMaintenanceMode] = useState(settings.maintenanceMode);
 
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -53,6 +55,17 @@ export default function AdminSettings() {
   useEffect(() => {
     setMaxBidsPerUser(settings.maxBidsPerUser ?? 0);
   }, [settings.maxBidsPerUser]);
+
+  useEffect(() => {
+    if (!selectedAuctionId && auctions.length > 0) {
+      setSelectedAuctionId(auctions[0].id);
+    }
+  }, [auctions, selectedAuctionId]);
+
+  useEffect(() => {
+    const selectedAuction = auctions.find(a => a.id === selectedAuctionId);
+    setAuctionBidLimit(selectedAuction?.maxBidsPerUser ?? 0);
+  }, [auctions, selectedAuctionId]);
 
   async function fetchBankAccounts() {
     setLoadingAccounts(true);
@@ -186,6 +199,24 @@ export default function AdminSettings() {
       setTimeout(() => setSaveSuccess(false), 2500);
     } catch (err: any) {
       setSaveError(err.message || 'Failed to save bid limit. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveAuctionBidLimit() {
+    if (!selectedAuctionId) return;
+    const limit = Math.max(0, Math.floor(Number(auctionBidLimit) || 0));
+    setAuctionBidLimit(limit);
+    setSaving(true);
+    setSaveError('');
+    setSaveSuccess(false);
+    try {
+      await updateAuction(selectedAuctionId, { maxBidsPerUser: limit });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to save auction bid limit. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -529,6 +560,48 @@ export default function AdminSettings() {
                 <XCircle className="w-3.5 h-3.5" /> {saveError}
               </p>
             )}
+          </div>
+        </div>
+
+        <div className="border-t border-slate-800 pt-4">
+          <label className="block text-slate-300 font-semibold mb-1 text-xs">
+            Set Limit For A Specific Auction
+          </label>
+          <p className="text-[11px] text-slate-500 mb-2">
+            Choose an auction to override the global limit. Set to <strong className="text-slate-400">0</strong> to use the global limit.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_180px_auto] gap-3 items-end">
+            <select
+              value={selectedAuctionId}
+              onChange={e => setSelectedAuctionId(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500 text-sm"
+            >
+              {auctions.length === 0 ? (
+                <option value="">No auctions available</option>
+              ) : auctions.map(auction => (
+                <option key={auction.id} value={auction.id}>
+                  {auction.title} ({auction.status})
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={auctionBidLimit}
+              disabled={!selectedAuctionId}
+              onChange={e => setAuctionBidLimit(Number(e.target.value))}
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500 font-mono text-sm disabled:opacity-50"
+              placeholder="0 = global"
+            />
+            <button
+              onClick={handleSaveAuctionBidLimit}
+              disabled={saving || !selectedAuctionId}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-amber-900/30 transition-all disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              Save Auction Limit
+            </button>
           </div>
         </div>
       </div>
