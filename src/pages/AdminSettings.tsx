@@ -379,7 +379,7 @@ export default function AdminSettings() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="flex flex-col gap-6">
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
           <h2 className="text-base font-bold text-white border-b border-slate-800 pb-3">
             General Platform Parameters
