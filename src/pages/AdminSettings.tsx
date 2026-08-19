@@ -32,6 +32,17 @@ export default function AdminSettings() {
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Add User modal state
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPhone, setNewUserPhone] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState<'admin' | 'customer'>('customer');
+  const [addUserLoading, setAddUserLoading] = useState(false);
+  const [addUserMsg, setAddUserMsg] = useState('');
+  const [addUserMsgType, setAddUserMsgType] = useState<'success' | 'error'>('success');
+
   // Bank Accounts Management State
   const [bankAccounts, setBankAccounts] = useState<BankAccountItem[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
@@ -437,7 +448,15 @@ export default function AdminSettings() {
             <h2 className="text-base font-bold text-white flex items-center gap-2">
               <Shield className="w-4 h-4 text-purple-400" /> Roles &amp; Permissions Control Matrix
             </h2>
-            <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">Interactive Matrix</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">Interactive Matrix</span>
+              <button
+                onClick={() => setShowAddUserModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-lg transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add User
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto border border-slate-800 rounded-xl">

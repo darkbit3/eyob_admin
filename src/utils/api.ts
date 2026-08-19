@@ -73,6 +73,11 @@ export const usersApi = {
     }),
   deleteUser: (id: string) =>
     request<{ success: boolean }>(`/users/${id}`, { method: 'DELETE' }),
+  createUser: (data: { name: string; email: string; phone: string; password: string; role: string }) =>
+    request<{ success: boolean; data: any }>('/users/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   resetPassword: (id: string, tempPassword?: string) =>
     request<{ success: boolean; data: any }>(`/users/${id}/reset-password`, {
       method: 'POST',
