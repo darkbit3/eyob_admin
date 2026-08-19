@@ -1,24 +1,62 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { User } from '../data/mockData';
+import { usersApi } from '../utils/api';
 import {
   Users, Search, UserX, UserCheck, KeyRound,
-  Trash2, Eye, History, Gavel, Phone, Mail, ShieldAlert
+  Trash2, Eye, History, Gavel, Phone, Mail, ShieldAlert,
+  Loader2, CheckCircle, Unlock
 } from 'lucide-react';
 
 export default function AdminUsers() {
-  const { users, toggleUserStatus, deleteUser, resetUserPassword, transactions, bids } = useApp();
+  const { users, toggleUserStatus, deleteUser, resetUserPassword } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [userDetailedData, setUserDetailedData] = useState<{
+    bids: any[];
+    transactions: any[];
+    unlocked_auctions: any[];
+  } | null>(null);
+  const [loadingUserDetails, setLoadingUserDetails] = useState(false);
+
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
 
   const [resetSuccessMessage, setResetSuccessMessage] = useState(false);
   const [resetTemp, setResetTemp] = useState<string | null>(null);
+
+  // Load real-time database bids, transactions, and unlocked auctions when user is selected
+  useEffect(() => {
+    if (!selectedUser) {
+      setUserDetailedData(null);
+      return;
+    }
+    let active = true;
+    setLoadingUserDetails(true);
+    usersApi.get(selectedUser.id)
+      .then(res => {
+        if (!active) return;
+        if (res.data) {
+          setUserDetailedData({
+            bids: res.data.bids || [],
+            transactions: res.data.transactions || [],
+            unlocked_auctions: res.data.unlocked_auctions || [],
+          });
+        }
+      })
+      .catch(() => {
+        if (active) setUserDetailedData({ bids: [], transactions: [], unlocked_auctions: [] });
+      })
+      .finally(() => {
+        if (active) setLoadingUserDetails(false);
+      });
+
+    return () => { active = false; };
+  }, [selectedUser?.id]);
 
   async function handleResetPasswordConfirmed() {
     if (resetPasswordUser) {
@@ -243,39 +281,108 @@ export default function AdminUsers() {
               </div>
             </div>
 
+            {/* Live Database Bids */}
             <div className="space-y-3">
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Gavel className="w-4 h-4 text-purple-400" /> Bidding Activity ({userBids.length})
-              </h4>
-              <div className="max-h-40 overflow-y-auto divide-y divide-slate-800 bg-slate-950/40 border border-slate-800 rounded-xl">
-                {userBids.length > 0 ? userBids.map(b => (
-                  <div key={b.id} className="p-2.5 text-xs flex items-center justify-between">
-                    <div>
-                      <span className="font-mono text-slate-300">Bid Amount: {b.amount} ETB</span>
-                      <span className="text-[10px] text-slate-500 block">{new Date(b.timestamp).toLocaleString()}</span>
-                    </div>
-                    {b.isLowestUnique && <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30">LOWEST UNIQUE WINNER</span>}
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <Gavel className="w-4 h-4 text-purple-400" /> Bidding Activity ({userDetailedData?.bids.length || 0})
+                </h4>
+                {loadingUserDetails && <Loader2 className="w-3.5 h-3.5 text-purple-400 animate-spin" />}
+              </div>
+              <div className="max-h-48 overflow-y-auto divide-y divide-slate-800 bg-slate-950/40 border border-slate-800 rounded-xl">
+                {loadingUserDetails ? (
+                  <div className="p-4 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-purple-400" /> Fetching real database bids...
                   </div>
-                )) : <div className="p-4 text-center text-xs text-slate-500">No active bids submitted yet</div>}
+                ) : userDetailedData && userDetailedData.bids.length > 0 ? (
+                  userDetailedData.bids.map(b => (
+                    <div key={b.id} className="p-3 text-xs flex items-center justify-between hover:bg-slate-900/50">
+                      <div className="space-y-0.5">
+                        <p className="font-bold text-white text-xs">{b.auction_title || `Auction #${b.auction_id}`}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-purple-300 font-bold">Bid: {Number(b.amount).toFixed(1)} ETB</span>
+                          <span className="text-[10px] text-slate-500 font-mono">{new Date(b.created_at).toLocaleString()}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        {b.is_lowest_unique ? (
+                          <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30 inline-block">
+                            🏆 LOWEST UNIQUE
+                          </span>
+                        ) : b.is_duplicate ? (
+                          <span className="bg-rose-500/20 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded border border-rose-500/30 inline-block">
+                            DUPLICATE
+                          </span>
+                        ) : (
+                          <span className="bg-blue-500/20 text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded border border-blue-500/30 inline-block">
+                            UNIQUE
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-xs text-slate-500">No bids placed in database yet</div>
+                )}
               </div>
             </div>
 
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <History className="w-4 h-4 text-purple-400" /> Wallet Transactions ({userTx.length})
-              </h4>
-              <div className="max-h-48 overflow-y-auto divide-y divide-slate-800 bg-slate-950/40 border border-slate-800 rounded-xl">
-                {userTx.length > 0 ? userTx.map(t => (
-                  <div key={t.id} className="p-2.5 text-xs flex items-center justify-between">
-                    <div>
-                      <p className="text-slate-200 font-medium">{t.description}</p>
-                      <span className="text-[10px] text-slate-500 font-mono">{new Date(t.timestamp).toLocaleString()}</span>
+            {/* Unlocked Auctions */}
+            {userDetailedData && userDetailedData.unlocked_auctions && userDetailedData.unlocked_auctions.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <Unlock className="w-4 h-4 text-amber-400" /> Unlocked Auctions ({userDetailedData.unlocked_auctions.length})
+                </h4>
+                <div className="max-h-36 overflow-y-auto divide-y divide-slate-800 bg-slate-950/40 border border-slate-800 rounded-xl">
+                  {userDetailedData.unlocked_auctions.map((u, i) => (
+                    <div key={i} className="p-2.5 text-xs flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-slate-200">{u.auction_title || `Auction #${u.auction_id}`}</p>
+                        <span className="text-[10px] text-slate-500 font-mono">{new Date(u.created_at).toLocaleString()}</span>
+                      </div>
+                      <span className="text-[10px] text-amber-300 font-mono bg-amber-950/40 border border-amber-500/30 px-2 py-0.5 rounded font-bold">
+                        Fee: {u.amount_paid} ETB
+                      </span>
                     </div>
-                    <span className={`font-mono font-bold ${t.amount > 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
-                      {t.amount > 0 ? `+${t.amount}` : t.amount} ETB
-                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Live Database Transactions */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <History className="w-4 h-4 text-purple-400" /> Wallet Transactions ({userDetailedData?.transactions.length || 0})
+                </h4>
+              </div>
+              <div className="max-h-48 overflow-y-auto divide-y divide-slate-800 bg-slate-950/40 border border-slate-800 rounded-xl">
+                {loadingUserDetails ? (
+                  <div className="p-4 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-purple-400" /> Fetching real database transactions...
                   </div>
-                )) : <div className="p-4 text-center text-xs text-slate-500">No transaction logs recorded</div>}
+                ) : userDetailedData && userDetailedData.transactions.length > 0 ? (
+                  userDetailedData.transactions.map(t => (
+                    <div key={t.id} className="p-2.5 text-xs flex items-center justify-between">
+                      <div className="max-w-[320px]">
+                        <p className="text-slate-200 font-medium truncate">{t.description}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-slate-500 font-mono">{new Date(t.created_at).toLocaleString()}</span>
+                          {t.payment_method && (
+                            <span className="text-[9px] bg-slate-800 text-slate-300 px-1.5 py-0.2 rounded font-mono">
+                              {t.payment_method}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className={`font-mono font-bold ${Number(t.amount) >= 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
+                        {Number(t.amount) >= 0 ? `+${Number(t.amount).toFixed(2)}` : Number(t.amount).toFixed(2)} ETB
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-xs text-slate-500">No transaction logs recorded</div>
+                )}
               </div>
             </div>
           </div>

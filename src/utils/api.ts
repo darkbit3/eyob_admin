@@ -65,6 +65,7 @@ export const authApi = {
 export const usersApi = {
   me: () => request<{ success: boolean; data: any }>('/users/me'),
   list: () => request<{ success: boolean; data: any[] }>('/users'),
+  get: (id: string) => request<{ success: boolean; data: any }>(`/users/${id}`),
   updateStatus: (id: string, status: 'active' | 'suspended') =>
     request<{ success: boolean; data: any }>(`/users/${id}/status`, {
       method: 'PATCH',
