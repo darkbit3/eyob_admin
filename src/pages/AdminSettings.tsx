@@ -261,22 +261,6 @@ export default function AdminSettings() {
     }
   }
 
-  const [permissions, setPermissions] = useState([
-    { role: 'Super Admin', manageAuctions: true, manageUsers: true, approvePayments: true, overrideWinners: false, viewAuditLogs: true },
-    { role: 'Finance Admin', manageAuctions: false, manageUsers: false, approvePayments: true, overrideWinners: false, viewAuditLogs: true },
-    { role: 'Support Agent', manageAuctions: false, manageUsers: true, approvePayments: false, overrideWinners: false, viewAuditLogs: false },
-  ]);
-
-  function togglePermission(roleIndex: number, key: string) {
-    if (key === 'overrideWinners') return;
-    setPermissions(prev => prev.map((p, idx) => {
-      if (idx === roleIndex) {
-        return { ...p, [key]: !(p as any)[key] };
-      }
-      return p;
-    }));
-  }
-
   async function handleAddUser(e: React.FormEvent) {
     e.preventDefault();
     if (!newUserName || !newUserEmail || !newUserPhone || !newUserPassword) {
