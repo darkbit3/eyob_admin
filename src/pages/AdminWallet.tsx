@@ -951,7 +951,7 @@ export default function AdminWallet() {
             <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-950">
               <img
                 src={previewItem.receiptImage || 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400'}
-                alt={`Receipt from ${previewItem.userName}`}
+                alt={`Receipt from ${previewItem.userName || 'Customer'}`}
                 className="w-full h-56 object-contain bg-slate-950"
                 onError={event => {
                   (event.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400';
@@ -964,11 +964,11 @@ export default function AdminWallet() {
                 <img src={previewItem.userPhoto} alt={previewItem.userName} className="w-10 h-10 rounded-full object-cover" />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-purple-950 text-purple-300 flex items-center justify-center text-sm font-black">
-                  {previewItem.userName.charAt(0).toUpperCase()}
+                  {(previewItem.userName || 'Customer').charAt(0).toUpperCase()}
                 </div>
               )}
               <div>
-                <p className="text-white text-sm font-bold">{previewItem.userName}</p>
+                <p className="text-white text-sm font-bold">{previewItem.userName || 'Customer'}</p>
                 <p className="text-slate-400 text-[11px]">{previewItem.userEmail || 'Customer payment submission'}</p>
               </div>
             </div>
