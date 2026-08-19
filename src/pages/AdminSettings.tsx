@@ -755,6 +755,72 @@ export default function AdminSettings() {
           </div>
         </div>
       )}
+
+      {/* ── ADD USER MODAL ──────────────────────────────────────────────── */}
+      {showAddUserModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                <Plus className="w-4 h-4 text-purple-400" /> Add New User
+              </h3>
+              <button onClick={() => { setShowAddUserModal(false); setAddUserMsg(''); }} className="text-slate-400 hover:text-white font-bold text-sm">✕</button>
+            </div>
+
+            <form onSubmit={handleAddUser} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Full Name</label>
+                <input type="text" value={newUserName} onChange={e => setNewUserName(e.target.value)}
+                  placeholder="e.g. Abebe Kebede"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500" />
+              </div>
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Email</label>
+                <input type="email" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)}
+                  placeholder="e.g. abebe@email.com"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500" />
+              </div>
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Phone</label>
+                <input type="text" value={newUserPhone} onChange={e => setNewUserPhone(e.target.value)}
+                  placeholder="e.g. 0911234567"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono" />
+              </div>
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Password</label>
+                <input type="password" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)}
+                  placeholder="Temporary password"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500" />
+              </div>
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Role</label>
+                <select value={newUserRole} onChange={e => setNewUserRole(e.target.value as 'admin' | 'customer')}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500">
+                  <option value="customer">Customer</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              {addUserMsg && (
+                <div className={`p-3 rounded-xl text-xs font-semibold border ${
+                  addUserMsgType === 'success' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-rose-500/10 text-rose-300 border-rose-500/30'
+                }`}>{addUserMsg}</div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                <button type="button" onClick={() => { setShowAddUserModal(false); setAddUserMsg(''); }}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs">
+                  Cancel
+                </button>
+                <button type="submit" disabled={addUserLoading}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-semibold rounded-xl flex items-center gap-1.5 text-xs shadow-lg shadow-purple-900/40">
+                  {addUserLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating…</> : <><Plus className="w-4 h-4" /> Create User</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
