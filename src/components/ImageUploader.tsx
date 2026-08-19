@@ -1,4 +1,4 @@
-﻿import { useRef, useState, DragEvent, ChangeEvent } from 'react';
+import { useRef, useState, DragEvent, ChangeEvent } from 'react';
 import { uploadApi } from '../utils/api';
 import { Upload, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -61,7 +61,7 @@ export default function ImageUploader({
   }
 
   return (
-    <div className={space-y-2 }>
+    <div className={`space-y-2 ${className}`}>
       {label && (
         <p className="text-xs font-semibold text-slate-300">{label}</p>
       )}
@@ -107,12 +107,11 @@ export default function ImageUploader({
           onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
           onClick={() => !uploading && inputRef.current?.click()}
-          className={
-            relative flex flex-col items-center justify-center gap-2
-            border-2 border-dashed rounded-xl p-6 cursor-pointer
-            transition-colors select-none
-            
-          }
+          className={`relative flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-6 cursor-pointer transition-colors select-none ${
+            dragging
+              ? 'border-purple-500 bg-purple-950/30'
+              : 'border-slate-700 bg-slate-950/40 hover:border-purple-600 hover:bg-purple-950/20'
+          }`}
         >
           {uploading ? (
             <>
@@ -158,3 +157,4 @@ export default function ImageUploader({
     </div>
   );
 }
+

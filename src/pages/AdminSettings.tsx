@@ -486,7 +486,7 @@ export default function AdminSettings() {
           </div>
           <div>
             <button
-              onClick={handleSave}
+              onClick={handleSaveSettings as any}
               disabled={saving}
               className="flex items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-amber-900/30 transition-all disabled:opacity-50"
             >
