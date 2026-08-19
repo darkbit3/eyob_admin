@@ -113,7 +113,7 @@ function apiToAuction(a: any): Auction {
     retailValue: Number(a.retail_value ?? a.retailValue ?? 0),
     bidPerCost: Number(a.bid_per_cost ?? a.bidPerCost ?? 100),
     category: a.category,
-    status,
+    status: status as AuctionStatus,
     startTime,
     endTime,
     minBid: Number(a.min_bid ?? a.minBid ?? 1),

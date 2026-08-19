@@ -22,6 +22,19 @@ interface BidRow {
   isLowestUnique: boolean;
 }
 
+// Helper: Get current datetime string in East Africa / Ethiopia Time (UTC+3) formatted for datetime-local
+function getEatNowString(offsetMinutes = 0): string {
+  const now = new Date(Date.now() + offsetMinutes * 60 * 1000);
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const eatDate = new Date(utc + 3 * 3600000);
+  const year = eatDate.getFullYear();
+  const month = String(eatDate.getMonth() + 1).padStart(2, '0');
+  const day = String(eatDate.getDate()).padStart(2, '0');
+  const hours = String(eatDate.getHours()).padStart(2, '0');
+  const minutes = String(eatDate.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 export default function AdminAuctions() {
   const { auctions, products, createAuction, updateAuction, pauseAuction, resumeAuction, cancelAuction, setAuctions } = useApp();
   const location = useLocation();
@@ -197,6 +210,22 @@ export default function AdminAuctions() {
 
   async function handleSave(asDraft = false) {
     if (!title.trim()) return;
+
+    const eatNow = getEatNowString();
+    // Validate that starting time cannot go back from now (allow editing existing past auctions if already active)
+    if (!editingAuction && startTime < eatNow) {
+      setActionState('error');
+      setActionMsg('Start date & time cannot be in the past. Please select the current or future time (EAT UTC+3).');
+      setTimeout(() => setActionState('idle'), 4000);
+      return;
+    }
+
+    if (endTime <= startTime) {
+      setActionState('error');
+      setActionMsg('End date & time must be strictly after the start date & time.');
+      setTimeout(() => setActionState('idle'), 4000);
+      return;
+    }
 
     setActionState('loading');
     setActionMsg(
@@ -945,21 +974,33 @@ export default function AdminAuctions() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-300 font-semibold mb-1">Start Date & Time</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-slate-300 font-semibold text-xs">Start Date & Time</label>
+                      <span className="text-[10px] font-mono text-purple-400 font-bold bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-500/20">
+                        EAT (UTC+3)
+                      </span>
+                    </div>
                     <input
                       type="datetime-local"
                       value={startTime}
+                      min={!editingAuction ? getEatNowString() : undefined}
                       onChange={e => setStartTime(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono text-xs"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-300 font-semibold mb-1">End Date & Time</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-slate-300 font-semibold text-xs">End Date & Time</label>
+                      <span className="text-[10px] font-mono text-purple-400 font-bold bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-500/20">
+                        EAT (UTC+3)
+                      </span>
+                    </div>
                     <input
                       type="datetime-local"
                       value={endTime}
+                      min={startTime || getEatNowString()}
                       onChange={e => setEndTime(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono text-xs"
                     />
                   </div>
                 </div>
