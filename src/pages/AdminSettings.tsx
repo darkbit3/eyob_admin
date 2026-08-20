@@ -67,7 +67,6 @@ export default function AdminSettings() {
   function getRolePerm(role: string, page: string): boolean {
     return rolePermissions[role]?.[page] ?? false;
   }
-  }
 
   const [platformName, setPlatformName] = useState(settings.platformName);
   const [supportEmail, setSupportEmail] = useState(settings.supportEmail);
