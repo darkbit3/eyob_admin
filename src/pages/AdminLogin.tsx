@@ -9,21 +9,23 @@ export default function AdminLogin() {
   const { setCurrentUser } = useApp();
   const nav = useNavigate();
 
-  const [phoneDigits, setPhoneDigits] = useState('');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
   const [password, setPassword]       = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched]         = useState<Record<string, boolean>>({});
   const [error, setError]             = useState('');
   const [loading, setLoading]         = useState(false);
 
-  const phoneError = touched.phone
-    ? phoneDigits.length === 0 ? 'Phone number is required'
-      : phoneDigits.length < 9 ? `${9 - phoneDigits.length} more digit${9 - phoneDigits.length > 1 ? 's' : ''} needed`
-      : !/^[79]/.test(phoneDigits) ? 'Number must start with 9 or 7'
+  const identifierError = touched.identifier
+    ? loginIdentifier.length === 0 ? 'Phone number or email is required'
+      : loginIdentifier.includes('@')
+      ? (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginIdentifier) ? 'Enter a valid email address' : null)
+      : loginIdentifier.replace(/\D/g, '').length !== 9 || !/^[79]/.test(loginIdentifier.replace(/\D/g, ''))
+      ? 'Enter 9 phone digits starting with 9 or 7'
       : null
     : null;
 
-  const isValid = phoneDigits.length === 9 && /^[79]/.test(phoneDigits) && password.length > 0;
+  const isValid = !identifierError && password.length > 0;
 
   function blur(field: string) {
     setTouched(prev => ({ ...prev, [field]: true }));
@@ -31,13 +33,14 @@ export default function AdminLogin() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setTouched({ phone: true, password: true });
+    setTouched({ identifier: true, password: true });
     if (!isValid) return;
 
     setError('');
     setLoading(true);
     try {
-      const fullPhone = `+251${phoneDigits}`;
+      const digits = loginIdentifier.replace(/\D/g, '');
+      const fullPhone = loginIdentifier.includes('@') ? loginIdentifier : `+251${digits}`;
       const res = await authApi.login(fullPhone, password);
       const u = res.data.user;
 
@@ -101,36 +104,24 @@ export default function AdminLogin() {
             {/* Phone */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                Phone Number
+                Phone Number or Email
               </label>
               <div className="flex">
-                <span className="inline-flex items-center gap-1.5 px-3 bg-slate-800 border border-r-0 border-slate-700 rounded-l-xl text-sm font-bold text-slate-400 select-none whitespace-nowrap">
-                  <Phone className="w-3.5 h-3.5 text-slate-500" />
-                  +251
-                </span>
                 <input
-                  type="tel"
-                  inputMode="numeric"
-                  value={phoneDigits}
-                  onChange={e => {
-                    const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
-                    setPhoneDigits(digits);
-                  }}
-                  onBlur={() => blur('phone')}
-                  className={`flex-1 bg-slate-800 border border-slate-700 text-white rounded-r-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 ${
-                    phoneError ? 'border-rose-700 focus:ring-rose-500' : ''
+                  type="text"
+                  value={loginIdentifier}
+                  onChange={e => setLoginIdentifier(e.target.value)}
+                  onBlur={() => blur('identifier')}
+                  className={`w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 ${
+                    identifierError ? 'border-rose-700 focus:ring-rose-500' : ''
                   }`}
-                  placeholder="9XXXXXXXX"
-                  maxLength={9}
+                  placeholder="9XXXXXXXX or support@example.com"
                 />
               </div>
               <div className="flex items-center justify-between mt-1">
-                {phoneError
-                  ? <p className="text-rose-400 text-xs font-medium">{phoneError}</p>
+                {identifierError
+                  ? <p className="text-rose-400 text-xs font-medium">{identifierError}</p>
                   : <span />}
-                <span className={`text-xs font-medium ml-auto ${phoneDigits.length === 9 ? 'text-emerald-500' : 'text-slate-500'}`}>
-                  {phoneDigits.length}/9
-                </span>
               </div>
             </div>
 

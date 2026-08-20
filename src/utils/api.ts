@@ -51,10 +51,10 @@ async function request<T>(
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const authApi = {
-  login: (phone: string, password: string) =>
+  login: (identifier: string, password: string) =>
     request<{ success: boolean; data: { user: any; token: string } }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ phone, password }),
+      body: JSON.stringify({ identifier, password }),
     }),
 
   logout: () =>
