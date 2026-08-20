@@ -36,9 +36,9 @@ const permissionRoutes: Array<{ route: string; permission: string }> = [
 ];
 
 function PermissionRoute({ permission, children }: { permission: string; children: React.ReactNode }) {
-  const { currentUser, rolePermissions, rolePermissionsLoading } = useApp();
+  const { currentUser, rolePermissions, rolePermissionsLoading, rolePermissionsLoaded } = useApp();
   if (!currentUser || currentUser.role === 'admin') return <>{children}</>;
-  if (rolePermissionsLoading) return <div className="p-8 text-center text-sm text-slate-400">Loading permissions…</div>;
+  if (rolePermissionsLoading || !rolePermissionsLoaded) return <div className="p-8 text-center text-sm text-slate-400">Loading permissions…</div>;
 
   if (rolePermissions[currentUser.role]?.[permission] === true) return <>{children}</>;
 

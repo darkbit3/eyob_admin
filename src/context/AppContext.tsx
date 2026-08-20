@@ -36,6 +36,7 @@ interface AppContextType {
   setSettings: React.Dispatch<React.SetStateAction<SystemSettings>>;
   rolePermissions: Record<string, Record<string, boolean>>;
   rolePermissionsLoading: boolean;
+  rolePermissionsLoaded: boolean;
 
   markNotificationRead: (id: string) => void;
   logout: () => void;
@@ -157,9 +158,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try { return JSON.parse(localStorage.getItem('bidlow_role_permissions') || '{}'); } catch { return {}; }
   });
   const [rolePermissionsLoading, setRolePermissionsLoading] = useState(false);
+  const [rolePermissionsLoaded, setRolePermissionsLoaded] = useState(false);
 
   useEffect(() => {
     if (!currentUser) return;
+    setRolePermissionsLoaded(false);
     setRolePermissionsLoading(true);
     settingsApi.getPermissions()
       .then(res => {
@@ -169,7 +172,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {})
-      .finally(() => setRolePermissionsLoading(false));
+      .finally(() => {
+        setRolePermissionsLoading(false);
+        setRolePermissionsLoaded(true);
+      });
   }, [currentUser?.id]);
 
   // ── On mount: restore admin session & load live data ─────────────────────────
@@ -657,6 +663,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       settings, setSettings,
       rolePermissions,
       rolePermissionsLoading,
+      rolePermissionsLoaded,
       markNotificationRead,
       logout,
       addAuditLog,
