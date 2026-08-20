@@ -199,6 +199,12 @@ export const auditApi = {
 // ── Settings ──────────────────────────────────────────────────────────────────
 export const settingsApi = {
   get: () => request<{ success: boolean; data: any }>('/settings'),
+  getPermissions: () => request<{ success: boolean; data: Record<string, Record<string, boolean>> }>('/settings/permissions'),
+  savePermissions: (permissions: Record<string, Record<string, boolean>>) =>
+    request<{ success: boolean; message?: string }>('/settings/permissions', {
+      method: 'PUT',
+      body: JSON.stringify({ permissions }),
+    }),
   update: (data: any) =>
     request<{ success: boolean; data: any }>('/settings', {
       method: 'PATCH',

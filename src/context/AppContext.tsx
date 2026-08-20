@@ -34,6 +34,8 @@ interface AppContextType {
   setAuditLogs: React.Dispatch<React.SetStateAction<AuditLog[]>>;
   settings: SystemSettings;
   setSettings: React.Dispatch<React.SetStateAction<SystemSettings>>;
+  rolePermissions: Record<string, Record<string, boolean>>;
+  rolePermissionsLoading: boolean;
 
   markNotificationRead: (id: string) => void;
   logout: () => void;
@@ -151,6 +153,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [settings, setSettings] = useState<SystemSettings>(initialSettings);
+  const [rolePermissions, setRolePermissions] = useState<Record<string, Record<string, boolean>>>(() => {
+    try { return JSON.parse(localStorage.getItem('bidlow_role_permissions') || '{}'); } catch { return {}; }
+  });
+  const [rolePermissionsLoading, setRolePermissionsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    setRolePermissionsLoading(true);
+    settingsApi.getPermissions()
+      .then(res => {
+        if (res.data && Object.keys(res.data).length > 0) {
+          setRolePermissions(res.data);
+          localStorage.setItem('bidlow_role_permissions', JSON.stringify(res.data));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setRolePermissionsLoading(false));
+  }, [currentUser?.id]);
 
   // ── On mount: restore admin session & load live data ─────────────────────────
   useEffect(() => {
@@ -637,6 +657,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       announcements, setAnnouncements,
       auditLogs, setAuditLogs,
       settings, setSettings,
+      rolePermissions,
+      rolePermissionsLoading,
       markNotificationRead,
       logout,
       addAuditLog,

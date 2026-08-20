@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminLayout() {
-  const { currentUser, setCurrentUser, paymentQueue, notifications } = useApp();
+  const { currentUser, setCurrentUser, paymentQueue, notifications, rolePermissions } = useApp();
   const nav = useNavigate();
   const loc = useLocation();
   // sidebarOpen controls visibility on ALL screen sizes
@@ -47,9 +47,6 @@ export default function AdminLayout() {
   };
 
   // Load permissions from localStorage
-  let savedPerms: Record<string, Record<string, boolean>> = {};
-  try { savedPerms = JSON.parse(localStorage.getItem('bidlow_role_permissions') || '{}'); } catch {}
-
   const isAdmin = currentUser?.role === 'admin';
 
   // Filter links — admin sees all; others see only permitted pages
@@ -57,7 +54,7 @@ export default function AdminLayout() {
     const permKey = PAGE_LABEL_MAP[l.label];
     if (!permKey) return true; // always show if no mapping
     const role = currentUser?.role ?? '';
-    return savedPerms[role]?.[permKey] === true;
+    return rolePermissions[role]?.[permKey] === true;
   });
 
   const isActive = (link: { to: string; exact?: boolean }) =>

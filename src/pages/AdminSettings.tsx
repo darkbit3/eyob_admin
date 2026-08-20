@@ -12,7 +12,7 @@ interface BankAccountItem {
 }
 
 export default function AdminSettings() {
-  const { settings, auctions, updateAuction, updateSystemSettings, currentUser } = useApp();
+  const { settings, auctions, updateAuction, updateSystemSettings, currentUser, rolePermissions: contextRolePermissions } = useApp();
 
   // ── Live roles from DB ────────────────────────────────────────────────────
   const [roleStats, setRoleStats] = useState<{ role: string; count: number }[]>([]);
@@ -26,12 +26,8 @@ export default function AdminSettings() {
 
   useEffect(() => {
     fetchRoleStats();
-    // Load saved permissions from localStorage
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setRolePermissions(JSON.parse(saved));
-    } catch {}
-  }, []);
+    setRolePermissions(contextRolePermissions);
+  }, [contextRolePermissions]);
 
   async function fetchRoleStats() {
     setRolesLoading(true);
@@ -58,9 +54,14 @@ export default function AdminSettings() {
     }));
   }
 
-  function saveRolePermissions() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(rolePermissions));
-    setPermSaveMsg('✅ Permissions saved.');
+  async function saveRolePermissions() {
+    try {
+      await settingsApi.savePermissions(rolePermissions);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rolePermissions));
+      setPermSaveMsg('✅ Permissions saved.');
+    } catch {
+      setPermSaveMsg('Unable to save permissions.');
+    }
     setTimeout(() => setPermSaveMsg(''), 2000);
   }
 

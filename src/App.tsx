@@ -36,17 +36,13 @@ const permissionRoutes: Array<{ route: string; permission: string }> = [
 ];
 
 function PermissionRoute({ permission, children }: { permission: string; children: React.ReactNode }) {
-  const { currentUser } = useApp();
+  const { currentUser, rolePermissions, rolePermissionsLoading } = useApp();
   if (!currentUser || currentUser.role === 'admin') return <>{children}</>;
+  if (rolePermissionsLoading) return <div className="p-8 text-center text-sm text-slate-400">Loading permissions…</div>;
 
-  let permissions: Record<string, Record<string, boolean>> = {};
-  try {
-    permissions = JSON.parse(localStorage.getItem('bidlow_role_permissions') || '{}');
-  } catch {}
+  if (rolePermissions[currentUser.role]?.[permission] === true) return <>{children}</>;
 
-  if (permissions[currentUser.role]?.[permission] === true) return <>{children}</>;
-
-  const firstAllowed = permissionRoutes.find(item => permissions[currentUser.role]?.[item.permission] === true);
+  const firstAllowed = permissionRoutes.find(item => rolePermissions[currentUser.role]?.[item.permission] === true);
   return <Navigate to={firstAllowed?.route || ADMIN_ROUTES.LOGIN} replace />;
 }
 
