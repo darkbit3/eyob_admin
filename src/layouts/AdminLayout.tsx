@@ -9,14 +9,14 @@ import {
 } from 'lucide-react';
 
 export default function AdminLayout() {
-  const { currentUser, setCurrentUser, paymentQueue, notifications, rolePermissions } = useApp();
+  const { currentUser, logout: clearSession, paymentQueue, notifications, rolePermissions } = useApp();
   const nav = useNavigate();
   const loc = useLocation();
   // sidebarOpen controls visibility on ALL screen sizes
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
 
-  function logout() { setCurrentUser(null); nav(ADMIN_ROUTES.LOGIN); }
+  function logout() { clearSession(); nav(ADMIN_ROUTES.LOGIN); }
 
   const pendingPaymentsCount = paymentQueue.filter(p => p.status === 'pending').length;
   const unreadNotifsCount = notifications.filter(n => !n.read).length;

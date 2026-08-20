@@ -261,10 +261,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Poll current admin profile (to keep admin wallet balance up-to-date in UI)
   useEffect(() => {
     let id: number | undefined;
+    let cancelled = false;
     async function poll() {
       try {
         const res = await usersApi.me();
-        setCurrentUserState(apiToUser(res.data));
+        if (!cancelled) setCurrentUserState(apiToUser(res.data));
       } catch (e) {
         // ignore polling errors
       }
@@ -274,7 +275,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       poll();
       id = window.setInterval(poll, 30000);
     }
-    return () => { if (id) window.clearInterval(id); };
+    return () => {
+      cancelled = true;
+      if (id) window.clearInterval(id);
+    };
   }, [currentUser?.id, currentUser?.role]);
 
   function setCurrentUser(u: User | null) {
