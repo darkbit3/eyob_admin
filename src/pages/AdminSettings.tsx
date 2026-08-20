@@ -406,116 +406,6 @@ export default function AdminSettings() {
         )}
       </div>
 
-      <div className="flex flex-col gap-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-          <h2 className="text-base font-bold text-white border-b border-slate-800 pb-3">
-            General Platform Parameters
-          </h2>
-
-          <form onSubmit={handleSaveSettings} className="space-y-4 text-xs">
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">Platform Brand Name</label>
-              <input
-                type="text"
-                value={platformName}
-                onChange={e => setPlatformName(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">Official Support Email</label>
-              <input
-                type="email"
-                value={supportEmail}
-                onChange={e => setSupportEmail(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Platform Currency Code</label>
-                <input
-                  type="text"
-                  value={currency}
-                  onChange={e => setCurrency(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Default Bid Step (ETB)</label>
-                <input
-                  type="number"
-                  value={defaultBidStep}
-                  onChange={e => setDefaultBidStep(Number(e.target.value))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Default Bid Per Cost (ETB)</label>
-                <p className="text-[11px] text-slate-500 mb-1.5">Entry fee charged per bid placed. Applied to new auctions by default.</p>
-                <input
-                  type="number"
-                  min={1}
-                  value={defaultBidPerCost}
-                  onChange={e => setDefaultBidPerCost(Number(e.target.value))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
-                  placeholder="e.g. 100"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Min Bid Floor (ETB)</label>
-                <input
-                  type="number"
-                  value={minBidPrice}
-                  onChange={e => setMinBidPrice(Number(e.target.value))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Max Bid Ceiling (ETB)</label>
-                <input
-                  type="number"
-                  value={maxBidPrice}
-                  onChange={e => setMaxBidPrice(Number(e.target.value))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
-              <div>
-                <p className="font-bold text-white">Platform Maintenance Mode</p>
-                <p className="text-[11px] text-slate-400">Pause customer bidding during database updates</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMaintenanceMode(!maintenanceMode)}
-                className={`text-2xl transition-colors ${maintenanceMode ? 'text-amber-400' : 'text-slate-600'}`}
-              >
-                {maintenanceMode ? <ToggleRight className="w-8 h-8" /> : <ToggleLeft className="w-8 h-8" />}
-              </button>
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-xs rounded-xl shadow-lg shadow-purple-900/40 transition-all"
-              >
-                <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save System Settings'}
-              </button>
-            </div>
-          </form>
-        </div>
-
         {/* ── Roles & Permissions — admin only ─────────────────────────── */}
         {currentUser?.role === 'admin' && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
@@ -636,7 +526,6 @@ export default function AdminSettings() {
           </div>
         </div>
         )}
-      </div>
 
       {/* ── BID PER USER SETTINGS ──────────────────────────────────────── */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">

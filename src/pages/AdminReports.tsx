@@ -21,6 +21,7 @@ export default function AdminReports() {
   const [categoryData, setCategoryData]   = useState<any[]>([]);
   const [paymentData, setPaymentData]     = useState<any[]>([]);
   const [winnerStats, setWinnerStats]     = useState<any>(null);
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [loading, setLoading]             = useState(false);
   const [error, setError]                 = useState('');
 
@@ -29,17 +30,17 @@ export default function AdminReports() {
       setLoading(true);
       setError('');
       try {
-        if (activeTab === 'revenue' && revenueData.length === 0) {
-          const res = await reportsApi.revenue();
+        if (activeTab === 'revenue') {
+          const res = await reportsApi.revenue({ date_from: startDate || undefined, date_to: endDate || undefined });
           setRevenueData(res.data || []);
-        } else if (activeTab === 'users' && userActivityData.length === 0) {
-          const res = await reportsApi.users();
+        } else if (activeTab === 'users') {
+          const res = await reportsApi.users({ date_from: startDate || undefined, date_to: endDate || undefined });
           setUserActivityData((res.data || []).map((r: any) => ({
             month: r.month,
             newUsers: Number(r.new_users || 0),
           })));
-        } else if (activeTab === 'auctions' && categoryData.length === 0) {
-          const res = await reportsApi.categories();
+        } else if (activeTab === 'auctions') {
+          const res = await reportsApi.categories({ date_from: startDate || undefined, date_to: endDate || undefined });
           setCategoryData((res.data || []).map((r: any) => ({
             category: r.category,
             categoryShort: String(r.category || '').slice(0, 8),
@@ -47,16 +48,16 @@ export default function AdminReports() {
             totalBids: Number(r.total_bids || 0),
             revenue: Number(r.total_retail_value || 0),
           })));
-        } else if (activeTab === 'payments' && paymentData.length === 0) {
-          const res = await reportsApi.payments();
+        } else if (activeTab === 'payments') {
+          const res = await reportsApi.payments({ date_from: startDate || undefined, date_to: endDate || undefined });
           setPaymentData((res.data || []).map((r: any, i: number) => ({
             name: r.payment_method,
             value: Number(r.transaction_count || 0),
             total: Number(r.total_amount || 0),
             color: PIE_COLORS[i % PIE_COLORS.length],
           })));
-        } else if (activeTab === 'winners' && !winnerStats) {
-          const res = await reportsApi.winnerStats();
+        } else if (activeTab === 'winners') {
+          const res = await reportsApi.winnerStats({ date_from: startDate || undefined, date_to: endDate || undefined });
           setWinnerStats(res.data);
         }
       } catch (err: any) {
@@ -67,7 +68,13 @@ export default function AdminReports() {
     }
     fetchTab();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, startDate, endDate]);
+
+  useEffect(() => {
+    reportsApi.dashboard()
+      .then(res => setDashboardStats(res.data))
+      .catch(() => setDashboardStats(null));
+  }, []);
 
   function handleExportCSV() {
     setExportToast(true);
@@ -155,6 +162,24 @@ export default function AdminReports() {
           </button>
         </div>
       </div>
+
+      {dashboardStats && (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          {[
+            { label: 'Total Users', value: dashboardStats.total_users, color: 'text-blue-400' },
+            { label: 'Active Users', value: dashboardStats.active_users, color: 'text-emerald-400' },
+            { label: 'Total Auctions', value: dashboardStats.total_auctions, color: 'text-purple-400' },
+            { label: 'Active Auctions', value: dashboardStats.active_auctions, color: 'text-amber-400' },
+            { label: 'Total Revenue', value: `${Number(dashboardStats.total_revenue_etb || 0).toLocaleString()} ETB`, color: 'text-emerald-400' },
+            { label: 'Pending Payments', value: dashboardStats.pending_payments, color: 'text-rose-400' },
+          ].map(stat => (
+            <div key={stat.label} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">{stat.label}</p>
+              <p className={`text-xl font-black font-mono mt-1 ${stat.color}`}>{stat.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-800 overflow-x-auto pb-1">
@@ -350,7 +375,6 @@ export default function AdminReports() {
                     <th className="p-3">Gateway Method</th>
                     <th className="p-3">Transactions</th>
                     <th className="p-3">Total Amount (ETB)</th>
-                    <th className="p-3">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800 text-slate-300 font-mono">
@@ -362,7 +386,6 @@ export default function AdminReports() {
                       </td>
                       <td className="p-3 font-bold text-purple-400">{p.value}</td>
                       <td className="p-3 text-emerald-400">{Number(p.total).toLocaleString()}</td>
-                      <td className="p-3 text-emerald-400 font-bold">ACTIVE</td>
                     </tr>
                   ))}
                 </tbody>

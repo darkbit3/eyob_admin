@@ -230,11 +230,26 @@ export const winnersApi = {
 // ── Reports ───────────────────────────────────────────────────────────────────
 export const reportsApi = {
   dashboard: () => request<{ success: boolean; data: any }>('/reports/dashboard'),
-  revenue: () => request<{ success: boolean; data: any[] }>('/reports/revenue'),
-  users: () => request<{ success: boolean; data: any[] }>('/reports/users'),
-  categories: () => request<{ success: boolean; data: any[] }>('/reports/categories'),
-  payments: () => request<{ success: boolean; data: any[] }>('/reports/payments'),
-  winnerStats: () => request<{ success: boolean; data: any }>('/winners/report/stats'),
+  revenue: (params?: { date_from?: string; date_to?: string }) => {
+    const q = new URLSearchParams(params as any).toString();
+    return request<{ success: boolean; data: any[] }>(`/reports/revenue${q ? `?${q}` : ''}`);
+  },
+  users: (params?: { date_from?: string; date_to?: string }) => {
+    const q = new URLSearchParams(params as any).toString();
+    return request<{ success: boolean; data: any[] }>(`/reports/users${q ? `?${q}` : ''}`);
+  },
+  categories: (params?: { date_from?: string; date_to?: string }) => {
+    const q = new URLSearchParams(params as any).toString();
+    return request<{ success: boolean; data: any[] }>(`/reports/categories${q ? `?${q}` : ''}`);
+  },
+  payments: (params?: { date_from?: string; date_to?: string }) => {
+    const q = new URLSearchParams(params as any).toString();
+    return request<{ success: boolean; data: any[] }>(`/reports/payments${q ? `?${q}` : ''}`);
+  },
+  winnerStats: (params?: { date_from?: string; date_to?: string }) => {
+    const q = new URLSearchParams(params as any).toString();
+    return request<{ success: boolean; data: any }>(`/winners/report/stats${q ? `?${q}` : ''}`);
+  },
   profit: (params?: { status?: string; date_from?: string; date_to?: string }) => {
     const q = new URLSearchParams(params as any).toString();
     return request<{ success: boolean; data: { auctions: any[]; summary: any } }>(`/reports/profit${q ? `?${q}` : ''}`);
