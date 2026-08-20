@@ -184,8 +184,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!token) return;
 
     usersApi.me()
-      .then(res => setCurrentUserState(apiToUser(res.data)))
-      .catch(() => removeToken());
+      .then(res => {
+        // Ignore a response from an old session after another user logs in.
+        if (getToken() === token) setCurrentUserState(apiToUser(res.data));
+      })
+      .catch(() => {
+        if (getToken() === token) removeToken();
+      });
 
     auctionsApi.list()
       .then(res => setAuctions(res.data.map(apiToAuction)))
