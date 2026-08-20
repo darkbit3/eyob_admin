@@ -12,14 +12,25 @@ interface BankAccountItem {
 }
 
 export default function AdminSettings() {
-  const { settings, auctions, updateAuction, updateSystemSettings } = useApp();
+  const { settings, auctions, updateAuction, updateSystemSettings, currentUser } = useApp();
 
   // ── Live roles from DB ────────────────────────────────────────────────────
   const [roleStats, setRoleStats] = useState<{ role: string; count: number }[]>([]);
   const [rolesLoading, setRolesLoading] = useState(false);
+  // permissions[role][page] = boolean
+  const [rolePermissions, setRolePermissions] = useState<Record<string, Record<string, boolean>>>({});
+  const [permSaveMsg, setPermSaveMsg] = useState('');
+
+  const PAGES = ['Dashboard','Auctions','Products','Users Mgmt','Wallet','Winners','Reports','Profit','Settings'];
+  const STORAGE_KEY = 'bidlow_role_permissions';
 
   useEffect(() => {
     fetchRoleStats();
+    // Load saved permissions from localStorage
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) setRolePermissions(JSON.parse(saved));
+    } catch {}
   }, []);
 
   async function fetchRoleStats() {
@@ -27,7 +38,6 @@ export default function AdminSettings() {
     try {
       const res = await usersApi.list();
       const users: any[] = res.data || [];
-      // Group by role, count users per role
       const roleMap: Record<string, number> = {};
       users.forEach((u: any) => {
         const r = u.role || 'customer';
@@ -39,6 +49,24 @@ export default function AdminSettings() {
     } finally {
       setRolesLoading(false);
     }
+  }
+
+  function toggleRolePermission(role: string, page: string) {
+    setRolePermissions(prev => ({
+      ...prev,
+      [role]: { ...(prev[role] ?? {}), [page]: !(prev[role]?.[page] ?? false) },
+    }));
+  }
+
+  function saveRolePermissions() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rolePermissions));
+    setPermSaveMsg('✅ Permissions saved.');
+    setTimeout(() => setPermSaveMsg(''), 2000);
+  }
+
+  function getRolePerm(role: string, page: string): boolean {
+    return rolePermissions[role]?.[page] ?? false;
+  }
   }
 
   const [platformName, setPlatformName] = useState(settings.platformName);
@@ -489,13 +517,15 @@ export default function AdminSettings() {
           </form>
         </div>
 
+        {/* ── Roles & Permissions — admin only ─────────────────────────── */}
+        {currentUser?.role === 'admin' && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <h2 className="text-base font-bold text-white flex items-center gap-2">
               <Shield className="w-4 h-4 text-purple-400" /> Roles &amp; Permissions Control Matrix
             </h2>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">Interactive Matrix</span>
+              <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">Admin Only</span>
               <button
                 onClick={() => setShowAddUserModal(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-lg transition-colors"
@@ -554,18 +584,18 @@ export default function AdminSettings() {
                           </span>
                         </td>
                         {/* Page columns */}
-                        {pages.map(page => (
+                        {PAGES.map(page => (
                           <td key={page} className="p-3 text-center">
                             {isAdmin ? (
-                              <span className="text-emerald-400 font-bold text-[11px]">✓</span>
+                              <input type="checkbox" checked readOnly
+                                className="w-4 h-4 rounded border-emerald-600 bg-emerald-600 text-emerald-500 cursor-not-allowed opacity-80" />
                             ) : isCustomer ? (
                               <span className="text-slate-700 text-[11px]">—</span>
                             ) : (
-                              <input
-                                type="checkbox"
-                                defaultChecked={false}
-                                className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                              />
+                              <input type="checkbox"
+                                checked={getRolePerm(role, page)}
+                                onChange={() => toggleRolePermission(role, page)}
+                                className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-purple-600 focus:ring-purple-500 cursor-pointer" />
                             )}
                           </td>
                         ))}
@@ -592,7 +622,21 @@ export default function AdminSettings() {
               The "Winner Override" privilege is locked at the system core level and cannot be granted to any role.
             </p>
           </div>
+
+          {/* Save Permissions Button */}
+          <div className="flex items-center gap-3 pt-2 border-t border-slate-800">
+            <button onClick={saveRolePermissions}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition-colors shadow-lg shadow-purple-900/30">
+              <Save className="w-3.5 h-3.5" /> Save Permissions
+            </button>
+            {permSaveMsg && (
+              <span className="text-emerald-400 text-xs font-semibold flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> {permSaveMsg}
+              </span>
+            )}
+          </div>
         </div>
+        )}
       </div>
 
       {/* ── BID PER USER SETTINGS ──────────────────────────────────────── */}

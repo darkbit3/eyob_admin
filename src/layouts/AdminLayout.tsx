@@ -33,6 +33,33 @@ export default function AdminLayout() {
     { to: ADMIN_ROUTES.SETTINGS,  icon: <Settings className="w-4 h-4" />,        label: 'Settings' },
   ];
 
+  // Page label → permission key mapping
+  const PAGE_LABEL_MAP: Record<string, string> = {
+    'Auctions':         'Auctions',
+    'Products':         'Products',
+    'Users':            'Users Mgmt',
+    'Wallet & Payments':'Wallet',
+    'Winners Oversight':'Winners',
+    'Reports':          'Reports',
+    'Profit & Revenue': 'Profit',
+    'Settings':         'Settings',
+    'Dashboard':        'Dashboard',
+  };
+
+  // Load permissions from localStorage
+  let savedPerms: Record<string, Record<string, boolean>> = {};
+  try { savedPerms = JSON.parse(localStorage.getItem('bidlow_role_permissions') || '{}'); } catch {}
+
+  const isAdmin = currentUser?.role === 'admin';
+
+  // Filter links — admin sees all; others see only permitted pages
+  const visibleLinks = isAdmin ? links : links.filter(l => {
+    const permKey = PAGE_LABEL_MAP[l.label];
+    if (!permKey) return true; // always show if no mapping
+    const role = currentUser?.role ?? '';
+    return savedPerms[role]?.[permKey] === true;
+  });
+
   const isActive = (link: { to: string; exact?: boolean }) =>
     link.exact ? loc.pathname === link.to : loc.pathname.startsWith(link.to);
 
@@ -101,7 +128,7 @@ export default function AdminLayout() {
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           <p className="px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Main Menu</p>
-          {links.map(l => {
+          {visibleLinks.map(l => {
             const active = isActive(l);
             return (
               <Link
@@ -157,7 +184,7 @@ export default function AdminLayout() {
               <span className="text-slate-500">Admin HQ</span>
               <span>/</span>
               <span className="font-semibold text-slate-100">
-                {links.find(isActive)?.label ?? 'Console'}
+                {visibleLinks.find(isActive)?.label ?? 'Console'}
               </span>
             </div>
           </div>
