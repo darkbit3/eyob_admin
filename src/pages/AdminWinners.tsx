@@ -194,7 +194,7 @@ export default function AdminWinners() {
             </select>
           </div>
 
-          <div className="space-y-3 max-h-[700px] overflow-y-auto">
+          <div className="space-y-3">
             {filteredProducts.map(p => {
               const pAuctions = auctions.filter(a => a.productId === p.id);
               const newest = pAuctions.sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime())[0];
