@@ -189,10 +189,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .then(res => setProducts(res.data.map(apiToProduct)))
       .catch(() => {});
 
-    bidsApi.all()
-      .then(res => setBids((res.data || []).map(apiToBid)))
-      .catch(() => {});
-
     usersApi.list()
       .then(res => setUsers(res.data.map(apiToUser)))
       .catch(() => {});
@@ -281,7 +277,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Reload admin data after login
       auctionsApi.list().then(res => setAuctions(res.data.map(apiToAuction))).catch(() => {});
       productsApi.list().then(res => setProducts(res.data.map(apiToProduct))).catch(() => {});
-      bidsApi.all().then(res => setBids((res.data || []).map(apiToBid))).catch(() => {});
+      if (u.role === 'admin') {
+        bidsApi.all().then(res => setBids((res.data || []).map(apiToBid))).catch(() => {});
+      }
       usersApi.list().then(res => setUsers(res.data.map(apiToUser))).catch(() => {});
       walletApi.allTransactions().then(res => setTransactions((res.data || []).map((t: any) => ({
         ...t,
