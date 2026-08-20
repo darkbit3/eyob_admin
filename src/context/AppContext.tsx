@@ -248,7 +248,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
     // Only poll when current user is an admin
-    if (currentUser && currentUser.role === 'admin') {
+    if (currentUser && ['admin', 'customer_support', 'support_agent'].includes(currentUser.role)) {
       poll();
       id = window.setInterval(poll, 30000);
     }

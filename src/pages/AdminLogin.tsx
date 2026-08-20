@@ -41,7 +41,7 @@ export default function AdminLogin() {
       const res = await authApi.login(fullPhone, password);
       const u = res.data.user;
 
-      if (u.role !== 'admin') {
+      if (!['admin', 'customer_support', 'support_agent'].includes(u.role)) {
         setError('Access denied. Admin account required.');
         return;
       }

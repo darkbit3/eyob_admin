@@ -2,7 +2,7 @@
 // Sample data has been removed. All data is fetched from the live API.
 
 export type AuctionStatus = 'active' | 'upcoming' | 'closed' | 'paused' | 'draft';
-export type UserRole = 'admin' | 'customer';
+export type UserRole = 'admin' | 'customer' | 'customer_support' | 'support_agent' | string;
 
 export interface User {
   id: string;
