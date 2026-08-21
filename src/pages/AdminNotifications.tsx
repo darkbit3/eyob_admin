@@ -12,9 +12,11 @@ export default function AdminNotifications() {
   const [message, setMessage] = useState('');
   const [audience, setAudience] = useState<'All Users' | 'Customers Only' | 'Admins Only' | 'Active Auction Bidders'>('All Users');
   const [type, setType] = useState<'System Alert' | 'Promotion' | 'Platform Update' | 'Maintenance Notice'>('Platform Update');
+  const [composeError, setComposeError] = useState('');
 
   function handleComposeSubmit() {
-    if (!title.trim() || !message.trim()) return;
+    if (!title.trim() || !message.trim()) { setComposeError('Title and message are required.'); return; }
+    setComposeError('');
     sendAnnouncement({
       title,
       message,
@@ -123,6 +125,7 @@ export default function AdminNotifications() {
             </div>
 
             <div className="space-y-4 text-xs">
+              {composeError && <p className="p-2.5 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 font-semibold">{composeError}</p>}
               <div>
                 <label className="block text-slate-300 font-semibold mb-1">Title</label>
                 <input

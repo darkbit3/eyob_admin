@@ -24,6 +24,7 @@ export default function AdminLogin() {
       ? 'Enter 9 phone digits starting with 9 or 7'
       : null
     : null;
+  const passwordError = touched.password && !password ? 'Password is required' : null;
 
   const isValid = !identifierError && password.length > 0;
 
@@ -137,7 +138,7 @@ export default function AdminLogin() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   onBlur={() => blur('password')}
-                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl pl-10 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500"
+                  className={`w-full bg-slate-800 border border-slate-700 text-white rounded-xl pl-10 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 ${passwordError ? 'border-rose-700 focus:ring-rose-500' : ''}`}
                   placeholder="••••••••"
                   autoComplete="current-password"
                 />
@@ -150,6 +151,7 @@ export default function AdminLogin() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {passwordError && <p className="text-rose-400 text-xs font-medium mt-1">{passwordError}</p>}
             </div>
 
             <button

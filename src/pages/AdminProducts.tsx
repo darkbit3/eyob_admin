@@ -54,7 +54,18 @@ export default function AdminProducts() {
   }
 
   async function handleSave() {
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setSaveState('error');
+      setSaveMsg('Product name is required.');
+      setTimeout(() => setSaveState('idle'), 2000);
+      return;
+    }
+    if (!Number.isFinite(Number(retailValue)) || Number(retailValue) <= 0) {
+      setSaveState('error');
+      setSaveMsg('Retail value must be a number greater than 0.');
+      setTimeout(() => setSaveState('idle'), 2000);
+      return;
+    }
     const validImages = images.filter(img => img.trim() !== '');
     if (validImages.length === 0) {
       setSaveState('error');

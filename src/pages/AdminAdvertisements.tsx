@@ -34,7 +34,12 @@ export default function AdminAdvertisements() {
   function change(field: keyof FormState, value: string | number) { setForm(current => ({ ...current, [field]: value })); }
 
   async function save() {
-    if (!form.title.trim() || !form.image_url.trim()) { setMessage('Title and image URL are required.'); return; }
+    if (!form.title.trim() || !form.image_url.trim()) { setMessage('Title and uploaded image are required.'); return; }
+    try { new URL(form.image_url); } catch { setMessage('Upload an image before saving.'); return; }
+    if (form.target_url.trim()) {
+      try { new URL(form.target_url); } catch { setMessage('Destination URL must be a valid URL.'); return; }
+    }
+    if (!Number.isInteger(Number(form.sort_order)) || Number(form.sort_order) < 0) { setMessage('Display order must be a non-negative whole number.'); return; }
     setSaving(true); setMessage('');
     try {
       if (editing) await advertisementsApi.update(editing.id, form);
