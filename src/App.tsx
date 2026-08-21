@@ -16,6 +16,7 @@ import AdminWinners       from './pages/AdminWinners';
 import AdminReports       from './pages/AdminReports';
 import AdminSettings      from './pages/AdminSettings';
 import AdminProfit        from './pages/AdminProfit';
+import AdminAdvertisements from './pages/AdminAdvertisements';
 
 function RequireAdmin({ children }: { children: React.ReactNode }) {
   const { currentUser } = useApp();
@@ -32,6 +33,7 @@ const permissionRoutes: Array<{ route: string; permission: string }> = [
   { route: ADMIN_ROUTES.WINNERS, permission: 'Winners' },
   { route: ADMIN_ROUTES.REPORTS, permission: 'Reports' },
   { route: ADMIN_ROUTES.PROFIT, permission: 'Profit' },
+  { route: ADMIN_ROUTES.ADVERTISEMENTS, permission: 'Advertisements' },
   { route: ADMIN_ROUTES.SETTINGS, permission: 'Settings' },
 ];
 
@@ -71,6 +73,7 @@ export default function App() {
             <Route path={ADMIN_ROUTES.REPORTS} element={<PermissionRoute permission="Reports"><AdminReports /></PermissionRoute>} />
             <Route path={ADMIN_ROUTES.SETTINGS} element={<PermissionRoute permission="Settings"><AdminSettings /></PermissionRoute>} />
             <Route path={ADMIN_ROUTES.PROFIT} element={<PermissionRoute permission="Profit"><AdminProfit /></PermissionRoute>} />
+            <Route path={ADMIN_ROUTES.ADVERTISEMENTS} element={<PermissionRoute permission="Advertisements"><AdminAdvertisements /></PermissionRoute>} />
           </Route>
 
           {/* ── Fallback ─────────────────────────────────────────────── */}

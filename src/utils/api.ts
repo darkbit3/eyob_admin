@@ -272,6 +272,13 @@ export const announcementsApi = {
     }),
 };
 
+export const advertisementsApi = {
+  list: () => request<{ success: boolean; data: any[] }>('/advertisements'),
+  create: (data: any) => request<{ success: boolean; data: any }>('/advertisements', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: any) => request<{ success: boolean; data: any }>(`/advertisements/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  delete: (id: string) => request<{ success: boolean }>(`/advertisements/${id}`, { method: 'DELETE' }),
+};
+
 // ── Image Upload — multipart to Cloudinary via backend ───────────────────────
 export const uploadApi = {
   uploadImage: async (file: File): Promise<string> => {

@@ -5,7 +5,7 @@ import { ADMIN_ROUTES } from '../utils/routes';
 import {
   Gavel, LayoutDashboard, Package, Users, BarChart3,
   Bell, LogOut, Menu, ChevronRight, X,
-  Wallet, Trophy, Settings, ShieldCheck, Search, TrendingUp
+  Wallet, Trophy, Settings, ShieldCheck, Search, TrendingUp, Megaphone
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -30,6 +30,7 @@ export default function AdminLayout() {
     { to: ADMIN_ROUTES.WINNERS,   icon: <Trophy className="w-4 h-4" />,          label: 'Winners Oversight' },
     { to: ADMIN_ROUTES.REPORTS,   icon: <BarChart3 className="w-4 h-4" />,       label: 'Reports' },
     { to: ADMIN_ROUTES.PROFIT,    icon: <TrendingUp className="w-4 h-4" />,      label: 'Profit & Revenue' },
+    { to: ADMIN_ROUTES.ADVERTISEMENTS, icon: <Megaphone className="w-4 h-4" />, label: 'Advertisements' },
     { to: ADMIN_ROUTES.SETTINGS,  icon: <Settings className="w-4 h-4" />,        label: 'Settings' },
   ];
 
@@ -43,6 +44,7 @@ export default function AdminLayout() {
     'Reports':          'Reports',
     'Profit & Revenue': 'Profit',
     'Settings':         'Settings',
+    'Advertisements':   'Advertisements',
     'Dashboard':        'Dashboard',
   };
 

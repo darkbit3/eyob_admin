@@ -16,6 +16,7 @@ export const ADMIN_ROUTES = {
   AUDIT:          '/i1j2k3',
   SETTINGS:       '/l4m5n6',
   PROFIT:         '/p7q8r9',
+  ADVERTISEMENTS: '/s8t9u0',
 } as const;
 
 export type AdminRouteKey = keyof typeof ADMIN_ROUTES;
