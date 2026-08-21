@@ -9,6 +9,7 @@ type Advertisement = {
 };
 
 type FormState = Omit<Advertisement, 'id'>;
+type FormErrors = Partial<Record<keyof FormState, string>>;
 const emptyForm: FormState = { title: '', subtitle: '', image_url: '', target_url: '', cta_label: 'Explore', status: 'active', sort_order: 0 };
 
 export default function AdminAdvertisements() {
@@ -19,6 +20,7 @@ export default function AdminAdvertisements() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   async function loadAds() {
     setLoading(true);
@@ -28,18 +30,25 @@ export default function AdminAdvertisements() {
   }
   useEffect(() => { loadAds(); }, []);
 
-  function openCreate() { setEditing(null); setForm(emptyForm); setOpen(true); }
-  function openEdit(ad: Advertisement) { setEditing(ad); setForm({ ...ad }); setOpen(true); }
+  function openCreate() { setEditing(null); setForm(emptyForm); setFormErrors({}); setOpen(true); }
+  function openEdit(ad: Advertisement) { setEditing(ad); setForm({ ...ad }); setFormErrors({}); setOpen(true); }
   function closeForm() { if (!saving) setOpen(false); }
-  function change(field: keyof FormState, value: string | number) { setForm(current => ({ ...current, [field]: value })); }
+  function change(field: keyof FormState, value: string | number) {
+    setForm(current => ({ ...current, [field]: value }));
+    setFormErrors(current => ({ ...current, [field]: undefined }));
+  }
 
-  async function save() {
-    if (!form.title.trim() || !form.image_url.trim()) { setMessage('Title and uploaded image are required.'); return; }
-    try { new URL(form.image_url); } catch { setMessage('Upload an image before saving.'); return; }
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    const errors: FormErrors = {};
+    if (!form.title.trim()) errors.title = 'Advertisement name is required.';
+    if (!form.image_url.trim()) errors.image_url = 'Import an advertisement image.';
+    else { try { new URL(form.image_url); } catch { errors.image_url = 'Upload a valid image first.'; } }
     if (form.target_url.trim()) {
-      try { new URL(form.target_url); } catch { setMessage('Destination URL must be a valid URL.'); return; }
+      try { new URL(form.target_url); } catch { errors.target_url = 'Enter a valid destination URL.'; }
     }
-    if (!Number.isInteger(Number(form.sort_order)) || Number(form.sort_order) < 0) { setMessage('Display order must be a non-negative whole number.'); return; }
+    if (!Number.isInteger(Number(form.sort_order)) || Number(form.sort_order) < 0) errors.sort_order = 'Use a whole number of 0 or higher.';
+    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
     setSaving(true); setMessage('');
     try {
       if (editing) await advertisementsApi.update(editing.id, form);
@@ -83,12 +92,12 @@ export default function AdminAdvertisements() {
         ))}
       </div>
 
-      {open && <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"><div className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-5 max-h-[90vh] overflow-y-auto"><div className="flex items-center justify-between mb-5"><h2 className="font-bold text-white">{editing ? 'Edit Advertisement' : 'Create Advertisement'}</h2><button onClick={closeForm} className="p-1.5 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button></div><div className="grid sm:grid-cols-2 gap-4">
-        {([['title', 'Title', 'text'], ['subtitle', 'Supporting copy', 'text'], ['target_url', 'Destination URL', 'url'], ['cta_label', 'Button label', 'text']] as const).map(([field, label, type]) => <label key={field} className={field === 'subtitle' ? 'sm:col-span-2' : ''}><span className="block text-[11px] font-bold text-slate-400 mb-1">{label}</span><input type={type} value={form[field]} onChange={e => change(field, e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500" /></label>)}
-        <div className="sm:col-span-2"><ImageUploader value={form.image_url} onUploaded={url => change('image_url', url)} onRemove={() => change('image_url', '')} label="Advertisement image (uploaded to Cloudinary)" /></div>
-        <label><span className="block text-[11px] font-bold text-slate-400 mb-1">Display order</span><input type="number" value={form.sort_order} onChange={e => change('sort_order', Number(e.target.value))} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500" /></label>
-        <label><span className="block text-[11px] font-bold text-slate-400 mb-1">Status</span><select value={form.status} onChange={e => change('status', e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500"><option value="active">Active</option><option value="paused">Paused</option></select></label>
-      </div><button disabled={saving} onClick={save} className="mt-5 w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-60 text-white text-sm font-bold">{saving ? 'Saving...' : editing ? 'Save Changes' : 'Publish Advertisement'}</button></div></div>}
+      {open && <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"><form onSubmit={save} className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-5 max-h-[90vh] overflow-y-auto"><div className="flex items-center justify-between mb-5"><h2 className="font-bold text-white">{editing ? 'Edit Advertisement' : 'Create Advertisement'}</h2><button type="button" onClick={closeForm} className="p-1.5 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button></div><div className="grid sm:grid-cols-2 gap-4">
+        {([['title', 'Advertisement name', 'text'], ['subtitle', 'Supporting copy', 'text'], ['target_url', 'Destination URL', 'url'], ['cta_label', 'Button label', 'text']] as const).map(([field, label, type]) => <label key={field} className={field === 'subtitle' ? 'sm:col-span-2' : ''}><span className="block text-[11px] font-bold text-slate-400 mb-1">{label}</span><input type={type} value={form[field]} onChange={e => change(field, e.target.value)} className={`w-full bg-slate-950 border rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500 ${formErrors[field] ? 'border-rose-500' : 'border-slate-700'}`} />{formErrors[field] && <span className="block mt-1 text-[11px] font-semibold text-rose-400">{formErrors[field]}</span>}</label>)}
+        <div className="sm:col-span-2"><ImageUploader value={form.image_url} onUploaded={url => change('image_url', url)} onRemove={() => change('image_url', '')} label="Advertisement image from computer (Cloudinary)" />{formErrors.image_url && <p className="mt-1 text-[11px] font-semibold text-rose-400">{formErrors.image_url}</p>}</div>
+        <label><span className="block text-[11px] font-bold text-slate-400 mb-1">Display order</span><input type="number" min="0" step="1" value={form.sort_order} onChange={e => change('sort_order', Number(e.target.value))} className={`w-full bg-slate-950 border rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500 ${formErrors.sort_order ? 'border-rose-500' : 'border-slate-700'}`} />{formErrors.sort_order && <span className="block mt-1 text-[11px] font-semibold text-rose-400">{formErrors.sort_order}</span>}</label>
+        <label><span className="block text-[11px] font-bold text-slate-400 mb-1">Status</span><select value={form.status} onChange={e => change('status', e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500"><option value="active">Active and visible</option><option value="paused">Paused and hidden</option></select></label>
+      </div><button type="submit" disabled={saving} className="mt-5 w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-60 text-white text-sm font-bold">{saving ? 'Saving...' : editing ? 'Save Changes' : 'Publish Advertisement'}</button></form></div>}
     </div>
   );
 }
