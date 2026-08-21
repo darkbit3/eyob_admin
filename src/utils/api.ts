@@ -226,6 +226,10 @@ export const settingsApi = {
     request<{ success: boolean; message?: string }>(`/settings/bank-accounts/${id}`, {
       method: 'DELETE',
     }),
+  getPaymentGateways: () => request<{ success: boolean; data: any[] }>('/settings/payment-gateways/manage'),
+  createPaymentGateway: (data: any) => request<{ success: boolean; data: any }>('/settings/payment-gateways', { method: 'POST', body: JSON.stringify(data) }),
+  updatePaymentGateway: (id: string, data: any) => request<{ success: boolean; data: any }>(`/settings/payment-gateways/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePaymentGateway: (id: string) => request<{ success: boolean }>(`/settings/payment-gateways/${id}`, { method: 'DELETE' }),
 };
 
 // ── Winners ───────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Settings, Shield, Save, CheckCircle2, Lock, ToggleLeft, ToggleRight, XCircle, Building2, Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { Settings, Shield, Save, CheckCircle2, Lock, ToggleLeft, ToggleRight, XCircle, Building2, Plus, Edit2, Trash2, Loader2, CreditCard } from 'lucide-react';
 import { settingsApi, usersApi } from '../utils/api';
 
 interface BankAccountItem {
@@ -9,6 +9,15 @@ interface BankAccountItem {
   account_number: string;
   account_holder: string;
   is_active: boolean;
+}
+
+interface PaymentGatewayItem {
+  id: string;
+  name: string;
+  display_name: string;
+  public_key: string;
+  is_active: boolean;
+  secret_configured?: boolean;
 }
 
 export default function AdminSettings() {
@@ -115,8 +124,21 @@ export default function AdminSettings() {
   const [bankFormMsg, setBankFormMsg] = useState('');
   const [bankFormMsgType, setBankFormMsgType] = useState<'success' | 'error'>('success');
 
+  const [paymentGateways, setPaymentGateways] = useState<PaymentGatewayItem[]>([]);
+  const [gatewayLoading, setGatewayLoading] = useState(false);
+  const [showGatewayModal, setShowGatewayModal] = useState(false);
+  const [editingGateway, setEditingGateway] = useState<PaymentGatewayItem | null>(null);
+  const [gatewayName, setGatewayName] = useState('');
+  const [gatewayDisplayName, setGatewayDisplayName] = useState('');
+  const [gatewayPublicKey, setGatewayPublicKey] = useState('');
+  const [gatewaySecretKey, setGatewaySecretKey] = useState('');
+  const [gatewayActive, setGatewayActive] = useState(true);
+  const [gatewaySaving, setGatewaySaving] = useState(false);
+  const [gatewayMsg, setGatewayMsg] = useState('');
+
   useEffect(() => {
     fetchBankAccounts();
+    fetchPaymentGateways();
   }, []);
 
   useEffect(() => {
@@ -143,6 +165,51 @@ export default function AdminSettings() {
       }
     } catch (e) {}
     finally { setLoadingAccounts(false); }
+  }
+
+  async function fetchPaymentGateways() {
+    setGatewayLoading(true);
+    try {
+      const res = await settingsApi.getPaymentGateways();
+      setPaymentGateways(res.data || []);
+    } catch (e) { setGatewayMsg('Unable to load payment gateways.'); }
+    finally { setGatewayLoading(false); }
+  }
+
+  function openGatewayCreate() {
+    setEditingGateway(null); setGatewayName(''); setGatewayDisplayName('');
+    setGatewayPublicKey(''); setGatewaySecretKey(''); setGatewayActive(true);
+    setGatewayMsg(''); setShowGatewayModal(true);
+  }
+
+  function openGatewayEdit(gateway: PaymentGatewayItem) {
+    setEditingGateway(gateway); setGatewayName(gateway.name); setGatewayDisplayName(gateway.display_name);
+    setGatewayPublicKey(gateway.public_key || ''); setGatewaySecretKey(''); setGatewayActive(gateway.is_active !== false);
+    setGatewayMsg(''); setShowGatewayModal(true);
+  }
+
+  async function saveGateway(e: React.FormEvent) {
+    e.preventDefault();
+    if (!gatewayName.trim() || !gatewayDisplayName.trim()) { setGatewayMsg('Gateway name and display name are required.'); return; }
+    setGatewaySaving(true); setGatewayMsg('');
+    try {
+      const data = { name: gatewayName, display_name: gatewayDisplayName, public_key: gatewayPublicKey, ...(gatewaySecretKey ? { secret_key: gatewaySecretKey } : {}), is_active: gatewayActive };
+      if (editingGateway) await settingsApi.updatePaymentGateway(editingGateway.id, data);
+      else await settingsApi.createPaymentGateway({ ...data, secret_key: gatewaySecretKey });
+      await fetchPaymentGateways(); setShowGatewayModal(false);
+    } catch (err: any) { setGatewayMsg(err?.message || 'Failed to save payment gateway.'); }
+    finally { setGatewaySaving(false); }
+  }
+
+  async function toggleGateway(gateway: PaymentGatewayItem) {
+    try { await settingsApi.updatePaymentGateway(gateway.id, { is_active: !gateway.is_active }); await fetchPaymentGateways(); }
+    catch (err: any) { setGatewayMsg(err?.message || 'Failed to update gateway.'); }
+  }
+
+  async function deleteGateway(id: string) {
+    if (!window.confirm('Delete this payment gateway configuration?')) return;
+    try { await settingsApi.deletePaymentGateway(id); await fetchPaymentGateways(); }
+    catch (err: any) { setGatewayMsg(err?.message || 'Failed to delete gateway.'); }
   }
 
   function handleOpenAddModal() {
@@ -405,6 +472,25 @@ export default function AdminSettings() {
         ) : (
           <p className="text-xs text-slate-500 italic py-4">No bank accounts configured yet. Click "Add Official Account" to create one.</p>
         )}
+      </div>
+
+      {/* ── PAYMENT GATEWAY CONFIGURATION ──────────────────────────────── */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3 gap-3">
+          <div>
+            <h2 className="text-base font-bold text-white flex items-center gap-2"><CreditCard className="w-4 h-4 text-cyan-400" /> Payment Gateway Configuration</h2>
+            <p className="text-slate-400 text-xs mt-0.5">Manage public display names and secure gateway credentials. Secret keys are never returned.</p>
+          </div>
+          <button onClick={openGatewayCreate} className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs rounded-xl"><Plus className="w-4 h-4" /> Add Gateway</button>
+        </div>
+        {gatewayMsg && <p className="text-xs text-rose-300 bg-rose-950/50 border border-rose-800 rounded-lg p-2">{gatewayMsg}</p>}
+        {gatewayLoading ? <div className="p-6 text-center text-xs text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading gateways...</div> : paymentGateways.length === 0 ? <p className="text-xs text-slate-500 italic py-3">No payment gateways configured.</p> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {paymentGateways.map(gateway => <div key={gateway.id} className="p-4 bg-slate-950/80 border border-slate-800 rounded-xl space-y-3">
+            <div className="flex items-start justify-between gap-2"><div><p className="font-bold text-white text-sm">{gateway.display_name}</p><p className="text-[10px] text-slate-500 font-mono mt-1">{gateway.name}</p></div><button onClick={() => toggleGateway(gateway)} title={gateway.is_active ? 'Turn gateway off' : 'Turn gateway on'} className={gateway.is_active ? 'text-emerald-400' : 'text-slate-600'}>{gateway.is_active ? <ToggleRight className="w-8 h-8" /> : <ToggleLeft className="w-8 h-8" />}</button></div>
+            <p className="text-[11px] text-slate-400 truncate">Public: {gateway.public_key || 'Not configured'}</p><p className="text-[11px] text-slate-400">Secure key: {gateway.secret_configured ? 'Configured and protected' : 'Not configured'}</p>
+            <div className="flex gap-2 border-t border-slate-800 pt-3"><button onClick={() => openGatewayEdit(gateway)} className="flex-1 px-2 py-1.5 bg-slate-800 hover:bg-slate-700 text-purple-300 text-xs font-semibold rounded-lg"><Edit2 className="w-3 h-3 inline mr-1" />Edit</button><button onClick={() => deleteGateway(gateway.id)} className="px-2.5 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs rounded-lg"><Trash2 className="w-3 h-3" /></button></div>
+          </div>)}
+        </div>}
       </div>
 
         {/* ── Roles & Permissions — admin only ─────────────────────────── */}
@@ -723,6 +809,20 @@ export default function AdminSettings() {
           </div>
         </div>
       )}
+
+      {/* ── PAYMENT GATEWAY MODAL ──────────────────────────────────────── */}
+      {showGatewayModal && <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"><div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3"><h3 className="font-bold text-white text-sm flex items-center gap-2"><CreditCard className="w-4 h-4 text-cyan-400" />{editingGateway ? 'Edit Payment Gateway' : 'Add Payment Gateway'}</h3><button onClick={() => setShowGatewayModal(false)} className="text-slate-400 hover:text-white">✕</button></div>
+        {gatewayMsg && <p className="text-xs text-rose-300 bg-rose-950/50 border border-rose-800 rounded-lg p-2">{gatewayMsg}</p>}
+        <form onSubmit={saveGateway} className="space-y-3 text-xs">
+          <label className="block"><span className="block text-slate-300 font-semibold mb-1">Gateway name / API identifier</span><input required value={gatewayName} onChange={e => setGatewayName(e.target.value)} placeholder="e.g. chapa" disabled={Boolean(editingGateway)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white disabled:opacity-60" /></label>
+          <label className="block"><span className="block text-slate-300 font-semibold mb-1">Public display name</span><input required value={gatewayDisplayName} onChange={e => setGatewayDisplayName(e.target.value)} placeholder="e.g. Pay with Chapa" className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white" /></label>
+          <label className="block"><span className="block text-slate-300 font-semibold mb-1">Public key</span><input value={gatewayPublicKey} onChange={e => setGatewayPublicKey(e.target.value)} placeholder="Public key shown to the client" className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-cyan-300 font-mono" /></label>
+          <label className="block"><span className="block text-slate-300 font-semibold mb-1">Secure secret key {editingGateway && <span className="text-slate-500 font-normal">(leave blank to keep current)</span>}</span><input type="password" value={gatewaySecretKey} onChange={e => setGatewaySecretKey(e.target.value)} placeholder={editingGateway ? 'Protected existing key' : 'Secret key stored securely'} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-amber-300 font-mono" /></label>
+          <label className="flex items-center gap-2 p-3 bg-slate-950 rounded-xl border border-slate-800"><input type="checkbox" checked={gatewayActive} onChange={e => setGatewayActive(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-cyan-600" /><span className="text-slate-300 font-semibold">On: display this gateway publicly</span></label>
+          <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setShowGatewayModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button><button type="submit" disabled={gatewaySaving} className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-semibold rounded-xl flex items-center gap-1.5">{gatewaySaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}Save Gateway</button></div>
+        </form>
+      </div></div>}
 
       {/* ── ADD USER MODAL ──────────────────────────────────────────────── */}
       {showAddUserModal && (
