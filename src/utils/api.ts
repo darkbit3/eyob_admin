@@ -1,10 +1,9 @@
 // ─── BidLow API Client ────────────────────────────────────────────────────────
 // All requests go through the Vite proxy → http://localhost:3000
 
-const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : '';
 const BASE =
   (import.meta as any).env?.VITE_API_BASE ??
-  (runtimeHost && /localhost|127\.0\.0\.1/.test(runtimeHost) ? '/api' : 'https://eyob-backend.onrender.com/api');
+  'https://api.ethio-bid.com/api';
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
 export function getToken(): string | null {
